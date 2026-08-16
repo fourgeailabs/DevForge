@@ -1,0 +1,6 @@
+{
+  "name": "DevForge",
+  "description": "Mobile IDE with GitHub, Google Drive, and Gemini AI integration. Allows local editing, simulated APK compilation, and cloud sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
