@@ -16,7 +16,11 @@ import kotlinx.coroutines.launch
 
 class EditorViewModel : ViewModel() {
 
-    private val db = FirebaseFirestore.getInstance()
+    private val db: FirebaseFirestore? = try {
+        FirebaseFirestore.getInstance()
+    } catch (e: Exception) {
+        null
+    }
     private var currentProjectId: String? = null
     private var isSyncing = false
 
@@ -31,7 +35,7 @@ class EditorViewModel : ViewModel() {
 
     fun initializeProject(projectId: String) {
         currentProjectId = projectId
-        db.collection("projects").document(projectId).addSnapshotListener { snapshot, e ->
+        db?.collection("projects")?.document(projectId)?.addSnapshotListener { snapshot, e ->
             if (e != null || snapshot == null) return@addSnapshotListener
             if (!isSyncing) {
                 val remoteCode = snapshot.getString("content")
@@ -46,9 +50,9 @@ class EditorViewModel : ViewModel() {
         _codeContent.value = newCode
         currentProjectId?.let { projectId ->
             isSyncing = true
-            db.collection("projects").document(projectId)
-                .set(mapOf("content" to newCode), SetOptions.merge())
-                .addOnCompleteListener { isSyncing = false }
+            db?.collection("projects")?.document(projectId)
+                ?.set(mapOf("content" to newCode), SetOptions.merge())
+                ?.addOnCompleteListener { isSyncing = false }
         }
     }
 

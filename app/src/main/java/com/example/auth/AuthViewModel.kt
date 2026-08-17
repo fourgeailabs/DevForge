@@ -24,7 +24,11 @@ import kotlinx.coroutines.tasks.await
 import com.example.BuildConfig
 
 class AuthViewModel : ViewModel() {
-    private val auth: FirebaseAuth = Firebase.auth
+    private val auth: FirebaseAuth? = try {
+        Firebase.auth
+    } catch (e: Exception) {
+        null
+    }
 
     private val _userState = MutableStateFlow<User?>(null)
     val userState: StateFlow<User?> = _userState.asStateFlow()
@@ -33,15 +37,23 @@ class AuthViewModel : ViewModel() {
     val authError: StateFlow<String?> = _authError.asStateFlow()
 
     init {
-        auth.addAuthStateListener { firebaseAuth ->
-            val user = firebaseAuth.currentUser
-            _userState.value = if (user != null) {
-                User(user.uid, user.displayName ?: "Developer", user.email ?: "", true)
-            } else null
+        if (auth == null) {
+            _authError.value = "Firebase is not configured. Missing google-services.json."
+        } else {
+            auth.addAuthStateListener { firebaseAuth ->
+                val user = firebaseAuth.currentUser
+                _userState.value = if (user != null) {
+                    User(user.uid, user.displayName ?: "Developer", user.email ?: "", true)
+                } else null
+            }
         }
     }
 
     fun signInWithGoogle(context: Context) {
+        if (auth == null) {
+            _authError.value = "Firebase is not configured. Missing google-services.json."
+            return
+        }
         viewModelScope.launch {
             try {
                 val credentialManager = CredentialManager.create(context)
@@ -91,6 +103,7 @@ class AuthViewModel : ViewModel() {
     }
 
     private suspend fun firebaseAuthWithGoogle(credential: AuthCredential) {
+        if (auth == null) return
         try {
             auth.signInWithCredential(credential).await()
             _authError.value = null
@@ -100,7 +113,13 @@ class AuthViewModel : ViewModel() {
     }
 
     fun signOut() {
-        auth.signOut()
+        auth?.signOut()
+        _userState.value = null
+    }
+    
+    fun signInAsGuest() {
+        _userState.value = User("guest", "Local User", "Offline Mode", false)
+        _authError.value = null
     }
     
     fun clearError() {

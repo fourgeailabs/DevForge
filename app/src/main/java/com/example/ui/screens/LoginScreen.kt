@@ -133,6 +133,24 @@ fun LoginScreen(
             ) {
                 Text("Sign in with Google", color = MaterialTheme.colorScheme.onBackground)
             }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text(
+                "Warning: If you skip sign in, your projects will be saved locally only and will not be backed up to the cloud.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            TextButton(
+                onClick = { authViewModel.signInAsGuest() }
+            ) {
+                Text("Skip account setup (Local only)", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
