@@ -345,7 +345,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.04.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.05.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -460,12 +460,22 @@ fun SettingsScreen(
 
 @Composable
 fun WhatsNewContent() {
-    var expandedVersion by remember { mutableStateOf<String?>("1.04.00") }
+    var expandedVersion by remember { mutableStateOf<String?>("1.05.00") }
 
     val updates = listOf(
         UpdateItem(
-            version = "1.04.00",
+            version = "1.05.00",
             date = "Current Update",
+            notes = listOf(
+                "S3/Azure Redirect Fix: Stripped Authorization headers on cross-host redirects so pre-signed artifact download URLs from GitHub Actions and S3/Azure storage work without 400/403 errors.",
+                "Multi-Phase APK Extraction Engine: Added ZipFile, ZipInputStream, and nested ZIP search capabilities to unpack APKs from any workflow artifact layout.",
+                "Android Package Verification: Integrated PackageManager archive validation to verify APK integrity before triggering the Android installer.",
+                "Diagnostic Download Feedback: Detailed error reporting and file size inspection if artifact downloads fail or contain API error pages."
+            )
+        ),
+        UpdateItem(
+            version = "1.04.00",
+            date = "Previous Update",
             notes = listOf(
                 "Prioritized Pre-Built APK Installer: Automatic detection of unzipped .apk release assets uploaded by creators to GitHub, prioritizing them above zipped build artifacts.",
                 "Purged Mandatory Login Screen: Full guest-first experience with instant dashboard access upon launch.",

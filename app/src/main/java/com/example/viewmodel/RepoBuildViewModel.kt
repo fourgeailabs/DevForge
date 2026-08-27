@@ -387,25 +387,11 @@ class RepoBuildViewModel : ViewModel() {
             _statusState.value = BuildStatusState.Downloading("Downloading creator's pre-built APK '$fileName'...")
             try {
                 val responseBody = RetrofitClient.githubService.downloadArtifactZip(authHeader, downloadUrl)
-                val downloadDir = java.io.File(context.cacheDir, "downloaded_apks").apply { mkdirs() }
-                val apkFile = java.io.File(downloadDir, if (fileName.isNotBlank()) fileName else "creator_release.apk")
-
-                responseBody.byteStream().use { input ->
-                    java.io.FileOutputStream(apkFile).use { output ->
-                        val buffer = ByteArray(32768)
-                        var bytesRead: Int
-                        while (input.read(buffer).also { bytesRead = it } != -1) {
-                            output.write(buffer, 0, bytesRead)
-                        }
-                        output.flush()
-                    }
-                }
-
-                if (apkFile.exists() && apkFile.length() > 0) {
+                val result = ApkInstaller.saveAndInstallDirectApk(context, responseBody, fileName)
+                if (result.isSuccess) {
                     _statusState.value = BuildStatusState.Success("Pre-built APK downloaded! Launching installer...")
-                    ApkInstaller.installApk(context, apkFile)
                 } else {
-                    _statusState.value = BuildStatusState.Error("Downloaded APK file is empty.")
+                    _statusState.value = BuildStatusState.Error(result.errorMessage ?: "Downloaded file is not a valid APK.")
                 }
             } catch (e: Exception) {
                 _statusState.value = BuildStatusState.Error("Failed to download direct APK: ${e.message}")
@@ -419,18 +405,22 @@ class RepoBuildViewModel : ViewModel() {
         artifact: GitHubArtifact
     ) {
         _statusState.value = BuildStatusState.Downloading("Downloading '${artifact.name}' ZIP (${artifact.size_in_bytes / 1024} KB)...")
-        val responseBody = RetrofitClient.githubService.downloadArtifactZip(
-            authHeader,
-            artifact.archive_download_url
-        )
+        try {
+            val responseBody = RetrofitClient.githubService.downloadArtifactZip(
+                authHeader,
+                artifact.archive_download_url
+            )
 
-        _statusState.value = BuildStatusState.Downloading("Extracting .apk and launching Android installer...")
-        val apkFile = ApkInstaller.extractAndInstallApk(context, responseBody)
+            _statusState.value = BuildStatusState.Downloading("Extracting .apk package and verifying...")
+            val result = ApkInstaller.extractAndInstallApk(context, responseBody)
 
-        if (apkFile != null) {
-            _statusState.value = BuildStatusState.Success("APK extracted & installer launched successfully!")
-        } else {
-            _statusState.value = BuildStatusState.Error("Failed to extract .apk from artifact ZIP file.")
+            if (result.isSuccess) {
+                _statusState.value = BuildStatusState.Success("APK extracted & installer launched successfully!")
+            } else {
+                _statusState.value = BuildStatusState.Error(result.errorMessage ?: "Failed to extract .apk from artifact ZIP file.")
+            }
+        } catch (e: Exception) {
+            _statusState.value = BuildStatusState.Error("Failed to download artifact: ${e.message}")
         }
     }
 

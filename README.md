@@ -11,6 +11,12 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.05.00
+- **S3/Azure Cross-Host Redirect Fix**: Added a network interceptor to OkHttpClient that strips `Authorization` headers when OkHttp follows 302 redirects off `api.github.com` to Azure/S3 storage hosts. This prevents Azure Blob Storage and AWS S3 from rejecting pre-signed SAS URLs with 400 Bad Request or 403 Forbidden errors.
+- **Multi-Phase APK Extraction Engine**: Upgraded `ApkInstaller` with `ZipFile`, `ZipInputStream`, and nested ZIP archive search to reliably extract `.apk` binaries from any GitHub Actions artifact layout.
+- **Android Package Integrity Verification**: Integrated `PackageManager.getPackageArchiveInfo` validation to inspect and confirm APK package signatures before passing them to the system installer.
+- **Diagnostic Download Feedback**: Detailed file size logging and error snippet inspection if artifact downloads fail or return API error responses.
+
 ### Version 1.04.00
 - **Prioritized Pre-Built Unzipped APK Installer**: Automatically scans GitHub Releases for direct `.apk` assets uploaded by creators. If an unzipped `.apk` is available, DevForge Pro prioritizes it with a highlighted banner at the top of the repository screen, allowing 1-tap direct download and installation.
 - **Purged Mandatory Login Screen**: Completely removed mandatory login gating. The app opens directly to the Dashboard home screen with full guest capabilities.

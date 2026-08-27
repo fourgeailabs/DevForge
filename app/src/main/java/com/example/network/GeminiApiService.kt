@@ -55,6 +55,17 @@ object RetrofitClient {
         .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .addNetworkInterceptor { chain ->
+            val request = chain.request()
+            // When following redirects from api.github.com to S3/Azure/objects.githubusercontent.com,
+            // strip the Authorization header to prevent S3/Azure storage from rejecting pre-signed SAS URLs.
+            val newRequest = if (request.url.host != "api.github.com") {
+                request.newBuilder().removeHeader("Authorization").build()
+            } else {
+                request
+            }
+            chain.proceed(newRequest)
+        }
         .build()
 
     private val json = Json { ignoreUnknownKeys = true }
