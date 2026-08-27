@@ -78,6 +78,20 @@ data class GitHubWorkflowRunsResponse(
 )
 
 @Serializable
+data class GitHubWorkflow(
+    val id: Long,
+    val name: String,
+    val path: String,
+    val state: String
+)
+
+@Serializable
+data class GitHubWorkflowsResponse(
+    val total_count: Int = 0,
+    val workflows: List<GitHubWorkflow> = emptyList()
+)
+
+@Serializable
 data class GitHubArtifact(
     val id: Long,
     val name: String,
@@ -127,6 +141,13 @@ interface GitHubApiService {
         @Query("per_page") perPage: Int = 20
     ): GitHubWorkflowRunsResponse
 
+    @GET("repos/{owner}/{repo}/actions/workflows")
+    suspend fun getWorkflows(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String
+    ): GitHubWorkflowsResponse
+
     @POST("repos/{owner}/{repo}/actions/workflows/build.yml/dispatches")
     suspend fun triggerBuildWorkflow(
         @Header("Authorization") token: String,
@@ -134,6 +155,31 @@ interface GitHubApiService {
         @Path("repo") repo: String,
         @Body body: WorkflowDispatchBody = WorkflowDispatchBody()
     ): Response<Unit>
+
+    @POST("repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches")
+    suspend fun dispatchWorkflowById(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Path("workflow_id") workflowId: String,
+        @Body body: WorkflowDispatchBody = WorkflowDispatchBody()
+    ): Response<Unit>
+
+    @POST("repos/{owner}/{repo}/actions/runs/{run_id}/rerun")
+    suspend fun rerunWorkflowRun(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Path("run_id") runId: Long
+    ): Response<Unit>
+
+    @GET("repos/{owner}/{repo}/actions/artifacts")
+    suspend fun getAllRepoArtifacts(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Query("per_page") perPage: Int = 30
+    ): GitHubArtifactsResponse
 
     @GET("repos/{owner}/{repo}/actions/runs/{run_id}/artifacts")
     suspend fun getRunArtifacts(

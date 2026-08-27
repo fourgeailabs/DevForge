@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.network.GitHubArtifact
 import com.example.network.GitHubWorkflowRun
 import com.example.settings.SettingsViewModel
 import com.example.viewmodel.BuildStatusState
@@ -41,10 +43,14 @@ fun RepoBuildScreen(
 ) {
     val context = LocalContext.current
     val githubPat by settingsViewModel.githubPat.collectAsState()
+    val geminiApiKey by settingsViewModel.geminiApiKey.collectAsState()
     val runs by buildViewModel.runs.collectAsState()
     val artifactsMap by buildViewModel.artifactsMap.collectAsState()
+    val latestRepoArtifact by buildViewModel.latestRepoArtifact.collectAsState()
     val statusState by buildViewModel.statusState.collectAsState()
     val isLoading by buildViewModel.isLoading.collectAsState()
+
+    val latestRun = runs.firstOrNull()
 
     LaunchedEffect(owner, repo, githubPat) {
         if (githubPat.isNotEmpty()) {
@@ -99,17 +105,28 @@ fun RepoBuildScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = 32.dp,
-                start = 16.dp,
-                end = 16.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize()
+        PullToRefreshBox(
+            isRefreshing = isLoading,
+            onRefresh = {
+                if (githubPat.isNotEmpty()) {
+                    buildViewModel.loadRepoActions(owner, repo, githubPat)
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
         ) {
-            // Hero Action Section
+            LazyColumn(
+                contentPadding = PaddingValues(
+                    top = 8.dp,
+                    bottom = 32.dp,
+                    start = 16.dp,
+                    end = 16.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+            // Most Recent Build & Trigger Card
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -147,23 +164,99 @@ fun RepoBuildScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = "Builds Android APKs directly in cloud",
+                                    text = "Builds & deploys Android APKs automatically",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        if (latestRun != null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(12.dp))
 
+                            Text(
+                                text = "MOST RECENT BUILD AVAILABLE",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "Run #${latestRun.run_number}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+
+                                val statusColor = when (latestRun.conclusion) {
+                                    "success" -> Color(0xFF2E7D32)
+                                    "failure" -> MaterialTheme.colorScheme.error
+                                    "cancelled" -> Color.Gray
+                                    else -> Color(0xFF0288D1)
+                                }
+
+                                Surface(
+                                    color = statusColor.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = (latestRun.conclusion ?: latestRun.status).uppercase(),
+                                        color = statusColor,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = buildViewModel.formatIsoTimestamp(latestRun.created_at),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            if (latestRun.head_commit?.message != null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Commit: ${latestRun.head_commit.message}",
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Trigger New Build Button
                         Button(
                             onClick = {
-                                buildViewModel.triggerBuild(owner, repo, githubPat)
+                                buildViewModel.triggerBuild(owner, repo, githubPat, customGeminiKey = geminiApiKey)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(52.dp),
-                            shape = RoundedCornerShape(16.dp),
+                                .height(48.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -173,25 +266,102 @@ fun RepoBuildScreen(
                             if (statusState is BuildStatusState.Triggering) {
                                 CircularProgressIndicator(
                                     color = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(22.dp),
+                                    modifier = Modifier.size(20.dp),
                                     strokeWidth = 2.dp
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text("Dispatching Build...", fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text("Starting Build...", fontWeight = FontWeight.Bold)
                             } else {
                                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Create APK (Trigger Build)", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text("Create APK (Trigger Build)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                        }
+
+                        if (latestRun != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Rerun Latest Build Button
+                            OutlinedButton(
+                                onClick = {
+                                    buildViewModel.rerunBuild(owner, repo, githubPat, latestRun.id, customGeminiKey = geminiApiKey)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(44.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Rerun Most Recent Build (#${latestRun.run_number})", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                             }
                         }
                     }
                 }
             }
 
-            // Live Build Status / Notification Banner
+            // Download Most Recent APK Zip Banner
+            item {
+                if (latestRepoArtifact != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF1B5E20)
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.FolderZip,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Most Recent APK Zip Available",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "'${latestRepoArtifact?.name}' • ${((latestRepoArtifact?.size_in_bytes ?: 0) / 1024)} KB",
+                                        fontSize = 12.sp,
+                                        color = Color.White.copy(alpha = 0.85f)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Button(
+                                onClick = {
+                                    buildViewModel.downloadMostRecentRepoApk(context, owner, repo, githubPat)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color(0xFF1B5E20)
+                                )
+                            ) {
+                                Icon(Icons.Default.GetApp, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Download Most Recent APK Zip & Install", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Live Build Status & Gemini ETA Monitor Banner
             item {
                 AnimatedVisibility(visible = statusState !is BuildStatusState.Idle) {
-                    val (bgColor, textColor, icon) = when (statusState) {
+                    val state = statusState
+                    val (bgColor, textColor, icon) = when (state) {
                         is BuildStatusState.Polling -> Triple(
                             MaterialTheme.colorScheme.primaryContainer,
                             MaterialTheme.colorScheme.onPrimaryContainer,
@@ -203,7 +373,7 @@ fun RepoBuildScreen(
                             Icons.Default.CloudDownload
                         )
                         is BuildStatusState.Success -> Triple(
-                            Color(0xFF1B5E20),
+                            Color(0xFF2E7D32),
                             Color.White,
                             Icons.Default.CheckCircle
                         )
@@ -219,32 +389,86 @@ fun RepoBuildScreen(
                         )
                     }
 
-                    val messageText = when (val state = statusState) {
-                        is BuildStatusState.Polling -> "Build in progress... Run #${state.activeRun?.run_number ?: ""} (${state.activeRun?.status ?: "queued"})"
-                        is BuildStatusState.Downloading -> state.progressMessage
-                        is BuildStatusState.Success -> state.message
-                        is BuildStatusState.Error -> state.message
-                        else -> ""
-                    }
-
                     Surface(
                         color = bgColor,
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(18.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    val titleMsg = when (state) {
+                                        is BuildStatusState.Polling -> "Build Run #${state.activeRun?.run_number ?: ""} In Progress"
+                                        is BuildStatusState.Downloading -> "Downloading Artifact..."
+                                        is BuildStatusState.Success -> "Action Completed"
+                                        is BuildStatusState.Error -> "Build Notice"
+                                        else -> ""
+                                    }
+                                    Text(
+                                        text = titleMsg,
+                                        color = textColor,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    if (state is BuildStatusState.Polling && state.elapsedTimeStr.isNotEmpty()) {
+                                        Text(
+                                            text = "Running for: ${state.elapsedTimeStr}",
+                                            color = textColor.copy(alpha = 0.9f),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+
+                            val descMsg = when (state) {
+                                is BuildStatusState.Downloading -> state.progressMessage
+                                is BuildStatusState.Success -> state.message
+                                is BuildStatusState.Error -> state.message
+                                else -> null
+                            }
+
+                            if (descMsg != null) {
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = messageText,
+                                    text = descMsg,
                                     color = textColor,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.weight(1f)
+                                    fontSize = 12.sp
                                 )
                             }
-                            if (statusState is BuildStatusState.Polling || statusState is BuildStatusState.Downloading) {
+
+                            if (state is BuildStatusState.Polling && state.geminiEstimate.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Surface(
+                                    color = textColor.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = textColor,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Gemini Estimate: ${state.geminiEstimate}",
+                                            color = textColor,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (state is BuildStatusState.Polling || state is BuildStatusState.Downloading) {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 LinearProgressIndicator(
                                     modifier = Modifier.fillMaxWidth(),
@@ -264,7 +488,7 @@ fun RepoBuildScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Recent Build Runs",
+                        text = "Workflow Runs History",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -311,8 +535,12 @@ fun RepoBuildScreen(
                     WorkflowRunCard(
                         run = run,
                         artifacts = artifactsMap[run.id] ?: emptyList(),
+                        formatIsoTimestamp = { buildViewModel.formatIsoTimestamp(it) },
                         onDownloadAndInstall = {
                             buildViewModel.downloadAndInstallApk(context, owner, repo, run.id, githubPat)
+                        },
+                        onRerunRun = {
+                            buildViewModel.rerunBuild(owner, repo, githubPat, run.id, customGeminiKey = geminiApiKey)
                         }
                     )
                 }
@@ -320,12 +548,15 @@ fun RepoBuildScreen(
         }
     }
 }
+}
 
 @Composable
 fun WorkflowRunCard(
     run: GitHubWorkflowRun,
-    artifacts: List<com.example.network.GitHubArtifact>,
-    onDownloadAndInstall: () -> Unit
+    artifacts: List<GitHubArtifact>,
+    formatIsoTimestamp: (String?) -> String,
+    onDownloadAndInstall: () -> Unit,
+    onRerunRun: () -> Unit
 ) {
     val statusColor = when (run.conclusion) {
         "success" -> Color(0xFF2E7D32)
@@ -388,39 +619,53 @@ fun WorkflowRunCard(
                 Spacer(modifier = Modifier.height(6.dp))
             }
 
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
+                Text(
+                    text = "Timestamp: ${formatIsoTimestamp(run.created_at)}",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Text(
                     text = "Branch: ${run.head_branch ?: "main"}",
                     fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = run.created_at?.substringBefore("T") ?: "",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
             }
 
-            if (run.conclusion == "success" || artifacts.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-                Button(
-                    onClick = onDownloadAndInstall,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2E7D32),
-                        contentColor = Color.White
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onRerunRun,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(Icons.Default.GetApp, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Download & Install APK", fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Rerun Run", fontSize = 12.sp)
+                }
+
+                if (run.conclusion == "success" || artifacts.isNotEmpty()) {
+                    Button(
+                        onClick = onDownloadAndInstall,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2E7D32),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(Icons.Default.GetApp, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Download APK", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

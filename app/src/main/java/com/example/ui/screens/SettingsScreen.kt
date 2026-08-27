@@ -229,7 +229,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.01.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.02.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -304,12 +304,22 @@ fun SettingsScreen(
 
 @Composable
 fun WhatsNewContent() {
-    var expandedVersion by remember { mutableStateOf<String?>("1.01.00") }
+    var expandedVersion by remember { mutableStateOf<String?>("1.02.00") }
 
     val updates = listOf(
         UpdateItem(
-            version = "1.01.00",
+            version = "1.02.00",
             date = "Current Update",
+            notes = listOf(
+                "Pull to Refresh: Swipe down on the repository actions screen to manually re-fetch the latest build logs and artifact status from GitHub.",
+                "Rerun Build Feature: Direct 1-tap re-run button for the most recent GitHub Actions workflow run.",
+                "Gemini AI Completion Predictions: Real-time AI build finish time predictions using Gemini 3.5 Flash.",
+                "Automatic ZIP Artifact Installer: Download and extract repository-level APK artifacts automatically."
+            )
+        ),
+        UpdateItem(
+            version = "1.01.00",
+            date = "Previous Update",
             notes = listOf(
                 "GitHub Repository Browser: Select any of your GitHub repositories directly.",
                 "GitHub Actions APK Builder: Trigger build.yml workflows from mobile to generate APKs in cloud.",

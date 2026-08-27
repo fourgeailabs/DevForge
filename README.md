@@ -10,6 +10,12 @@ GitHub: [https://github.com/fourgeailabs](https://github.com/fourgeailabs)
 GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com/fourgeailabs/DevForge)
 
 ## Recent Updates
+### Version 1.02.00
+- **Pull to Refresh**: Swipe down on the repository actions screen to manually refresh build runs and artifact availability status from GitHub.
+- **Direct Build Rerun**: Dedicated 1-tap re-run button for the most recent workflow run on GitHub Actions.
+- **Gemini AI Build Completion Estimates**: Live completion prediction powered by Gemini 3.5 Flash.
+- **Automated ZIP Artifact Downloader & Installer**: Automatically scans and extracts APK artifacts directly from repository-level ZIP files.
+
 ### Version 1.01.00
 - **GitHub OAuth / PAT Authentication**: Dedicated login screen to authenticate directly using GitHub Personal Access Tokens.
 - **Repository Browser**: Beautiful, modern UI for browsing user GitHub repositories directly inside the mobile app.
