@@ -30,17 +30,21 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.viewmodel.EditorViewModel
 
+import com.example.settings.SettingsViewModel
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditorScreen(
     projectId: String,
     onNavigateBack: () -> Unit,
-    viewModel: EditorViewModel = viewModel()
+    viewModel: EditorViewModel = viewModel(),
+    settingsViewModel: SettingsViewModel = viewModel()
 ) {
     val codeContent by viewModel.codeContent.collectAsState()
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
     val geminiFeedback by viewModel.geminiFeedback.collectAsState()
     val hasDetectedErrors by viewModel.hasDetectedErrors.collectAsState()
+    val geminiApiKey by settingsViewModel.geminiApiKey.collectAsState()
 
     LaunchedEffect(projectId) {
         viewModel.initializeProject(projectId)
@@ -85,7 +89,7 @@ fun EditorScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.analyzeCodeWithGemini() },
+                        onClick = { viewModel.analyzeCodeWithGemini(geminiApiKey) },
                         modifier = Modifier
                             .padding(end = 4.dp)
                             .clip(CircleShape)
@@ -243,7 +247,7 @@ fun EditorScreen(
                                                 Text("Fix Manually", color = MaterialTheme.colorScheme.onBackground)
                                             }
                                             Button(
-                                                onClick = { viewModel.fixErrorsWithGemini() },
+                                                onClick = { viewModel.fixErrorsWithGemini(geminiApiKey) },
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = MaterialTheme.colorScheme.primary,
                                                     contentColor = MaterialTheme.colorScheme.onPrimary

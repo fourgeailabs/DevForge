@@ -19,6 +19,7 @@ import com.example.settings.SettingsViewModel
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.EditorScreen
 import com.example.ui.screens.LoginScreen
+import com.example.ui.screens.RepoBuildScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.MyApplicationTheme
 
@@ -54,11 +55,23 @@ class MainActivity : ComponentActivity() {
                 }
                 composable("dashboard") {
                     DashboardScreen(
-                        onNavigateToEditor = { projectId ->
-                            navController.navigate("editor/$projectId")
+                        onNavigateToRepoBuild = { owner, repo ->
+                            navController.navigate("repo_build/$owner/$repo")
                         },
                         onNavigateToSettings = {
                             navController.navigate("settings")
+                        }
+                    )
+                }
+                composable("repo_build/{owner}/{repo}") { backStackEntry ->
+                    val owner = backStackEntry.arguments?.getString("owner") ?: ""
+                    val repo = backStackEntry.arguments?.getString("repo") ?: ""
+                    RepoBuildScreen(
+                        owner = owner,
+                        repo = repo,
+                        onNavigateBack = { navController.popBackStack() },
+                        onNavigateToEditor = {
+                            navController.navigate("editor/$owner-$repo")
                         }
                     )
                 }

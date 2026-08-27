@@ -1,9 +1,22 @@
 package com.example.network
 
 import kotlinx.serialization.Serializable
+import okhttp3.ResponseBody
+import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
+import retrofit2.http.Streaming
+import retrofit2.http.Url
+
+@Serializable
+data class GitHubOwner(
+    val login: String,
+    val avatar_url: String? = null
+)
 
 @Serializable
 data class GitHubRepo(
@@ -12,7 +25,12 @@ data class GitHubRepo(
     val full_name: String,
     val private: Boolean,
     val html_url: String,
-    val description: String? = null
+    val description: String? = null,
+    val stargazers_count: Int = 0,
+    val language: String? = null,
+    val default_branch: String = "main",
+    val updated_at: String? = null,
+    val owner: GitHubOwner? = null
 )
 
 @Serializable
@@ -24,10 +42,73 @@ data class GitHubFile(
     val download_url: String? = null
 )
 
+@Serializable
+data class GitHubUser(
+    val login: String,
+    val avatar_url: String,
+    val name: String? = null,
+    val email: String? = null
+)
+
+@Serializable
+data class GitHubHeadCommit(
+    val id: String? = null,
+    val message: String? = null,
+    val timestamp: String? = null
+)
+
+@Serializable
+data class GitHubWorkflowRun(
+    val id: Long,
+    val name: String? = null,
+    val status: String, // e.g., "queued", "in_progress", "completed"
+    val conclusion: String? = null, // e.g., "success", "failure", "cancelled"
+    val html_url: String? = null,
+    val created_at: String? = null,
+    val updated_at: String? = null,
+    val head_branch: String? = null,
+    val head_commit: GitHubHeadCommit? = null,
+    val run_number: Int = 0
+)
+
+@Serializable
+data class GitHubWorkflowRunsResponse(
+    val total_count: Int = 0,
+    val workflow_runs: List<GitHubWorkflowRun> = emptyList()
+)
+
+@Serializable
+data class GitHubArtifact(
+    val id: Long,
+    val name: String,
+    val size_in_bytes: Long = 0,
+    val archive_download_url: String,
+    val expired: Boolean = false,
+    val created_at: String? = null
+)
+
+@Serializable
+data class GitHubArtifactsResponse(
+    val total_count: Int = 0,
+    val artifacts: List<GitHubArtifact> = emptyList()
+)
+
+@Serializable
+data class WorkflowDispatchBody(
+    val ref: String = "main"
+)
+
 interface GitHubApiService {
+    @GET("user")
+    suspend fun getUserProfile(
+        @Header("Authorization") token: String
+    ): GitHubUser
+
     @GET("user/repos")
     suspend fun getUserRepos(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("sort") sort: String = "updated",
+        @Query("per_page") perPage: Int = 100
     ): List<GitHubRepo>
 
     @GET("repos/{owner}/{repo}/contents/{path}")
@@ -37,4 +118,35 @@ interface GitHubApiService {
         @Path("repo") repo: String,
         @Path("path") path: String
     ): List<GitHubFile>
+
+    @GET("repos/{owner}/{repo}/actions/runs")
+    suspend fun getWorkflowRuns(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Query("per_page") perPage: Int = 20
+    ): GitHubWorkflowRunsResponse
+
+    @POST("repos/{owner}/{repo}/actions/workflows/build.yml/dispatches")
+    suspend fun triggerBuildWorkflow(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Body body: WorkflowDispatchBody = WorkflowDispatchBody()
+    ): Response<Unit>
+
+    @GET("repos/{owner}/{repo}/actions/runs/{run_id}/artifacts")
+    suspend fun getRunArtifacts(
+        @Header("Authorization") token: String,
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Path("run_id") runId: Long
+    ): GitHubArtifactsResponse
+
+    @Streaming
+    @GET
+    suspend fun downloadArtifactZip(
+        @Header("Authorization") token: String,
+        @Url downloadUrl: String
+    ): ResponseBody
 }

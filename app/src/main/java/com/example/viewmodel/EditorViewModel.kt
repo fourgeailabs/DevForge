@@ -59,10 +59,9 @@ class EditorViewModel : ViewModel() {
     private val _hasDetectedErrors = MutableStateFlow(false)
     val hasDetectedErrors: StateFlow<Boolean> = _hasDetectedErrors.asStateFlow()
 
-    fun analyzeCodeWithGemini() {
-        val apiKey = BuildConfig.GEMINI_API_KEY
+    fun analyzeCodeWithGemini(apiKey: String) {
         if (apiKey.isEmpty()) {
-            _geminiFeedback.value = "Gemini API key is not configured in Secrets."
+            _geminiFeedback.value = "Gemini API key is not configured in Settings."
             return
         }
 
@@ -92,10 +91,9 @@ class EditorViewModel : ViewModel() {
         }
     }
 
-    fun fixErrorsWithGemini() {
-        val apiKey = BuildConfig.GEMINI_API_KEY
+    fun fixErrorsWithGemini(apiKey: String) {
         if (apiKey.isEmpty()) {
-            _geminiFeedback.value = "Gemini API key is not configured in Secrets."
+            _geminiFeedback.value = "Gemini API key is not configured in Settings."
             return
         }
 
