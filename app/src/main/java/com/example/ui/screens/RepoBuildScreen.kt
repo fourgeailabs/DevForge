@@ -189,6 +189,7 @@ fun RepoBuildScreen(
                                     buildViewModel.downloadDirectApkFile(
                                         context = context,
                                         downloadUrl = directApk.apkDownloadUrl,
+                                        apiAssetUrl = directApk.apiAssetUrl,
                                         fileName = directApk.apkAssetName,
                                         token = githubPat
                                     )

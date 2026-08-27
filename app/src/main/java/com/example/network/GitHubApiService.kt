@@ -114,6 +114,7 @@ data class GitHubReleaseAsset(
     val name: String,
     val size: Long = 0,
     val browser_download_url: String,
+    val url: String? = null,
     val content_type: String? = null,
     val created_at: String? = null,
     val updated_at: String? = null
@@ -250,6 +251,14 @@ interface GitHubApiService {
     suspend fun downloadArtifactZip(
         @Header("Authorization") token: String? = null,
         @Url downloadUrl: String
+    ): ResponseBody
+
+    @Streaming
+    @GET
+    suspend fun downloadReleaseAsset(
+        @Header("Authorization") token: String? = null,
+        @Header("Accept") accept: String = "application/octet-stream",
+        @Url url: String
     ): ResponseBody
 
     @GET("repos/{owner}/{repo}/releases")

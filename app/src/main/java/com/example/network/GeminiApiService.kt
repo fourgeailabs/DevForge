@@ -57,9 +57,10 @@ object RetrofitClient {
         .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .addNetworkInterceptor { chain ->
             val request = chain.request()
-            // When following redirects from api.github.com to S3/Azure/objects.githubusercontent.com,
-            // strip the Authorization header to prevent S3/Azure storage from rejecting pre-signed SAS URLs.
-            val newRequest = if (request.url.host != "api.github.com") {
+            val host = request.url.host
+            // Strip Authorization header on cross-host redirects to external storage hosts
+            // (e.g. objects.githubusercontent.com, s3.amazonaws.com, azure) to avoid SAS signature errors.
+            val newRequest = if (host != "api.github.com" && host != "github.com") {
                 request.newBuilder().removeHeader("Authorization").build()
             } else {
                 request

@@ -11,6 +11,11 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.07.00
+- **GitHub Release Asset API Endpoint Integration**: Replaced direct web browser download URLs with the official GitHub REST API release asset endpoint (`/repos/{owner}/{repo}/releases/assets/{asset_id}`) using the `Accept: application/octet-stream` header. This prevents HTTP 404 Not Found errors on release assets across public & private repositories.
+- **OkHttp Cross-Host Header Preservation**: Preserved `Authorization` headers on requests directly targeting `github.com` while maintaining automatic header removal when redirecting off to third-party storage hosts (S3, Azure Blob Storage).
+- **Actionable HTTP 404 Error Diagnostics**: Replaced generic 404 exception strings with clear, step-by-step guidance explaining expired build artifacts, missing `.github/workflows/build.yml` files, or PAT permission requirements.
+
 ### Version 1.06.00
 - **Background Thread Coroutine Execution**: Refactored `ApkInstaller` network streaming, Zip extraction, and file operations to run explicitly on `Dispatchers.IO` background threads. This eliminates `NetworkOnMainThreadException` during artifact downloads.
 - **Main Thread Installer Dispatch**: Ensured package installer intent dispatches (`ACTION_VIEW`) run cleanly on `Dispatchers.Main`.

@@ -28,6 +28,7 @@ data class DirectApkReleaseInfo(
     val tagName: String,
     val apkAssetName: String,
     val apkDownloadUrl: String,
+    val apiAssetUrl: String? = null,
     val sizeBytes: Long,
     val publishedAt: String?
 )
@@ -110,6 +111,7 @@ class RepoBuildViewModel : ViewModel() {
                                 tagName = release.tag_name,
                                 apkAssetName = apkAsset.name,
                                 apkDownloadUrl = apkAsset.browser_download_url,
+                                apiAssetUrl = apkAsset.url,
                                 sizeBytes = apkAsset.size,
                                 publishedAt = release.published_at ?: release.created_at
                             )
@@ -128,7 +130,12 @@ class RepoBuildViewModel : ViewModel() {
                 }
 
             } catch (e: Exception) {
-                _statusState.value = BuildStatusState.Error("Failed to load actions: ${e.message}")
+                val errMessage = if (e is retrofit2.HttpException && e.code() == 404) {
+                    "Repository or Actions workflow not found (HTTP 404). Verify '$owner/$repo' exists or enter a GitHub PAT in Settings for private repositories."
+                } else {
+                    "Failed to load actions: ${e.localizedMessage ?: e.message}"
+                }
+                _statusState.value = BuildStatusState.Error(errMessage)
             } finally {
                 _isLoading.value = false
             }
@@ -199,7 +206,12 @@ class RepoBuildViewModel : ViewModel() {
                 if (latestRun != null) {
                     rerunBuild(owner, repo, token, latestRun.id, customGeminiKey)
                 } else {
-                    _statusState.value = BuildStatusState.Error("Error starting build: ${e.message}")
+                    val message = if (e is retrofit2.HttpException && e.code() == 404) {
+                        "Workflow build.yml not found (HTTP 404). Ensure '.github/workflows/build.yml' exists in the repository or check your PAT permissions."
+                    } else {
+                        "Error starting build: ${e.localizedMessage ?: e.message}"
+                    }
+                    _statusState.value = BuildStatusState.Error(message)
                 }
             }
         }
@@ -348,7 +360,13 @@ class RepoBuildViewModel : ViewModel() {
     ) {
         val directApk = _latestDirectApk.value
         if (directApk != null) {
-            downloadDirectApkFile(context, directApk.apkDownloadUrl, directApk.apkAssetName, token)
+            downloadDirectApkFile(
+                context = context,
+                downloadUrl = directApk.apkDownloadUrl,
+                apiAssetUrl = directApk.apiAssetUrl,
+                fileName = directApk.apkAssetName,
+                token = token
+            )
             return
         }
 
@@ -365,13 +383,18 @@ class RepoBuildViewModel : ViewModel() {
                 }
 
                 if (targetArtifact == null) {
-                    _statusState.value = BuildStatusState.Error("No available APK artifacts found in $owner/$repo.")
+                    _statusState.value = BuildStatusState.Error("No available APK artifacts found in $owner/$repo. Please trigger a new build.")
                     return@launch
                 }
 
                 downloadAndInstallArtifact(context, authHeader, targetArtifact)
             } catch (e: Exception) {
-                _statusState.value = BuildStatusState.Error("Failed to download latest artifact: ${e.message}")
+                val errMessage = if (e is retrofit2.HttpException && e.code() == 404) {
+                    "Artifact no longer available (HTTP 404). Artifacts may have expired on GitHub. Please trigger a new build."
+                } else {
+                    "Failed to download latest artifact: ${e.localizedMessage ?: e.message}"
+                }
+                _statusState.value = BuildStatusState.Error(errMessage)
             }
         }
     }
@@ -379,6 +402,7 @@ class RepoBuildViewModel : ViewModel() {
     fun downloadDirectApkFile(
         context: Context,
         downloadUrl: String,
+        apiAssetUrl: String? = null,
         fileName: String,
         token: String = ""
     ) {
@@ -386,7 +410,17 @@ class RepoBuildViewModel : ViewModel() {
         viewModelScope.launch {
             _statusState.value = BuildStatusState.Downloading("Downloading creator's pre-built APK '$fileName'...")
             try {
-                val responseBody = RetrofitClient.githubService.downloadArtifactZip(authHeader, downloadUrl)
+                val targetUrl = if (!apiAssetUrl.isNullOrBlank()) apiAssetUrl else downloadUrl
+                val responseBody = if (!apiAssetUrl.isNullOrBlank()) {
+                    RetrofitClient.githubService.downloadReleaseAsset(
+                        token = authHeader,
+                        accept = "application/octet-stream",
+                        url = targetUrl
+                    )
+                } else {
+                    RetrofitClient.githubService.downloadArtifactZip(authHeader, targetUrl)
+                }
+
                 val result = ApkInstaller.saveAndInstallDirectApk(context, responseBody, fileName)
                 if (result.isSuccess) {
                     _statusState.value = BuildStatusState.Success("Pre-built APK downloaded! Launching installer...")
@@ -394,7 +428,24 @@ class RepoBuildViewModel : ViewModel() {
                     _statusState.value = BuildStatusState.Error(result.errorMessage ?: "Downloaded file is not a valid APK.")
                 }
             } catch (e: Exception) {
-                _statusState.value = BuildStatusState.Error("Failed to download direct APK: ${e.message}")
+                // Fallback attempt using downloadUrl if apiAssetUrl failed
+                if (!apiAssetUrl.isNullOrBlank() && downloadUrl != apiAssetUrl) {
+                    try {
+                        val responseBody = RetrofitClient.githubService.downloadArtifactZip(authHeader, downloadUrl)
+                        val result = ApkInstaller.saveAndInstallDirectApk(context, responseBody, fileName)
+                        if (result.isSuccess) {
+                            _statusState.value = BuildStatusState.Success("Pre-built APK downloaded! Launching installer...")
+                            return@launch
+                        }
+                    } catch (_: Exception) {}
+                }
+
+                val errMessage = if (e is retrofit2.HttpException && e.code() == 404) {
+                    "Release APK asset not found (HTTP 404). If accessing a private repository, ensure your PAT in Settings has 'repo' scope."
+                } else {
+                    "Failed to download direct APK: ${e.localizedMessage ?: e.message}"
+                }
+                _statusState.value = BuildStatusState.Error(errMessage)
             }
         }
     }
@@ -420,7 +471,12 @@ class RepoBuildViewModel : ViewModel() {
                 _statusState.value = BuildStatusState.Error(result.errorMessage ?: "Failed to extract .apk from artifact ZIP file.")
             }
         } catch (e: Exception) {
-            _statusState.value = BuildStatusState.Error("Failed to download artifact: ${e.message}")
+            val errMessage = if (e is retrofit2.HttpException && e.code() == 404) {
+                "Artifact unavailable or expired on GitHub (HTTP 404). Please run 'Create APK (Trigger Build)' to generate a fresh artifact."
+            } else {
+                "Failed to download artifact: ${e.localizedMessage ?: e.message}"
+            }
+            _statusState.value = BuildStatusState.Error(errMessage)
         }
     }
 

@@ -94,7 +94,12 @@ class GitHubViewModel : ViewModel() {
                     }
                 }
             } catch (e: Exception) {
-                _error.value = "Unable to load public GitHub repository or creator: ${e.message}"
+                val errMessage = if (e is retrofit2.HttpException && e.code() == 404) {
+                    "GitHub repository or creator '$cleanInput' not found (HTTP 404). Check the repository name or enter your GitHub PAT in Settings for private repositories."
+                } else {
+                    "Unable to load public GitHub repository or creator: ${e.localizedMessage ?: e.message}"
+                }
+                _error.value = errMessage
             } finally {
                 _isLoading.value = false
             }

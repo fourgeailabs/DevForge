@@ -345,7 +345,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.06.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.07.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -460,12 +460,21 @@ fun SettingsScreen(
 
 @Composable
 fun WhatsNewContent() {
-    var expandedVersion by remember { mutableStateOf<String?>("1.06.00") }
+    var expandedVersion by remember { mutableStateOf<String?>("1.07.00") }
 
     val updates = listOf(
         UpdateItem(
-            version = "1.06.00",
+            version = "1.07.00",
             date = "Current Update",
+            notes = listOf(
+                "GitHub Release Asset API Downloading: Integrated GitHub REST API asset endpoint with Accept: application/octet-stream to prevent 404 Not Found errors on release assets across public & private repositories.",
+                "OkHttp Cross-Host Header Preservation: Updated network interceptor to keep Authorization headers on github.com while safely stripping headers on redirects to external S3/Azure storage hosts.",
+                "Actionable HTTP 404 Error Diagnostics: Replaced cryptic 404 error strings with clear, step-by-step guidance explaining expired artifacts, workflow files, or PAT permission requirements."
+            )
+        ),
+        UpdateItem(
+            version = "1.06.00",
+            date = "Previous Update",
             notes = listOf(
                 "Background Thread Coroutines Dispatcher: Fixed NetworkOnMainThreadException when downloading and streaming workflow artifact ZIPs by moving all stream reading, decompression, and file I/O to Dispatchers.IO.",
                 "UI-Thread Installer Launch: Ensured Android Package Installer intents run cleanly on Dispatchers.Main context.",
