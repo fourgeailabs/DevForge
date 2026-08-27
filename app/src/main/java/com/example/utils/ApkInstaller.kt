@@ -6,6 +6,8 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.content.FileProvider
 import okhttp3.ResponseBody
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -41,13 +43,13 @@ object ApkInstaller {
      * Extracts an APK file from a downloaded Zip ResponseBody, saves it to internal cache,
      * verifies package integrity, and triggers the Android Package Installer.
      */
-    fun extractAndInstallApk(context: Context, responseBody: ResponseBody): ApkExtractionResult {
+    suspend fun extractAndInstallApk(context: Context, responseBody: ResponseBody): ApkExtractionResult = withContext(Dispatchers.IO) {
         var tempZipFile: File? = null
         try {
             val downloadDir = File(context.cacheDir, "downloaded_apks").apply { mkdirs() }
             tempZipFile = File(downloadDir, "temp_artifact_${System.currentTimeMillis()}.zip")
 
-            // 1. Stream response body directly to a local temp file
+            // 1. Stream response body directly to a local temp file on Dispatchers.IO
             responseBody.byteStream().use { inputStream ->
                 FileOutputStream(tempZipFile).use { outputStream ->
                     val buffer = ByteArray(32768)
@@ -63,14 +65,14 @@ object ApkInstaller {
             Log.d(TAG, "Downloaded artifact file size: $fileSizeKb KB (${tempZipFile.length()} bytes)")
 
             if (!tempZipFile.exists() || tempZipFile.length() == 0L) {
-                return ApkExtractionResult(false, null, "Downloaded artifact file is empty (0 bytes).")
+                return@withContext ApkExtractionResult(false, null, "Downloaded artifact file is empty (0 bytes).")
             }
 
             // Quick check: If the file starts with XML/HTML tags (API error response)
             if (isTextOrHtmlError(tempZipFile)) {
                 val snippet = tempZipFile.readText().take(300)
                 Log.e(TAG, "API Error snippet: $snippet")
-                return ApkExtractionResult(
+                return@withContext ApkExtractionResult(
                     false,
                     null,
                     "Downloaded file is an API error response, not a ZIP or APK archive. Response: ${snippet.take(120)}"
@@ -82,8 +84,10 @@ object ApkInstaller {
                 val directApkTarget = File(downloadDir, "app-release.apk")
                 if (directApkTarget.exists()) directApkTarget.delete()
                 tempZipFile.copyTo(directApkTarget, overwrite = true)
-                installApk(context, directApkTarget)
-                return ApkExtractionResult(true, directApkTarget, null)
+                withContext(Dispatchers.Main) {
+                    installApk(context, directApkTarget)
+                }
+                return@withContext ApkExtractionResult(true, directApkTarget, null)
             }
 
             var extractedApkFile: File? = null
@@ -122,7 +126,7 @@ object ApkInstaller {
                     }
                 }
             } catch (ze: Exception) {
-                Log.w(TAG, "ZipFile extraction notice: ${ze.message}")
+                Log.w(TAG, "ZipFile extraction notice: ${ze.localizedMessage ?: ze.message}")
             }
 
             // Phase 3: Fallback using ZipInputStream (for streamed / alignment-different zip files)
@@ -156,7 +160,7 @@ object ApkInstaller {
                         }
                     }
                 } catch (zise: Exception) {
-                    Log.w(TAG, "ZipInputStream fallback notice: ${zise.message}")
+                    Log.w(TAG, "ZipInputStream fallback notice: ${zise.localizedMessage ?: zise.message}")
                 }
             }
 
@@ -201,23 +205,27 @@ object ApkInstaller {
                         }
                     }
                 } catch (ne: Exception) {
-                    Log.w(TAG, "Nested zip extraction notice: ${ne.message}")
+                    Log.w(TAG, "Nested zip extraction notice: ${ne.localizedMessage ?: ne.message}")
                 }
             }
 
-            if (extractedApkFile != null && isValidApk(context, extractedApkFile)) {
-                installApk(context, extractedApkFile)
-                return ApkExtractionResult(true, extractedApkFile, null)
+            val finalApk = extractedApkFile
+            if (finalApk != null && isValidApk(context, finalApk)) {
+                withContext(Dispatchers.Main) {
+                    installApk(context, finalApk)
+                }
+                return@withContext ApkExtractionResult(true, finalApk, null)
             } else {
-                return ApkExtractionResult(
+                return@withContext ApkExtractionResult(
                     false,
                     null,
                     "No valid .apk file could be extracted from the artifact ($fileSizeKb KB). Ensure your GitHub Workflow builds an APK and uploads it via actions/upload-artifact."
                 )
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to unzip and install APK: ${e.message}", e)
-            return ApkExtractionResult(false, null, "APK extraction exception: ${e.message}")
+            val errMessage = e.localizedMessage ?: e.message ?: e::class.java.simpleName
+            Log.e(TAG, "Failed to unzip and install APK: $errMessage", e)
+            return@withContext ApkExtractionResult(false, null, "APK extraction error ($errMessage)")
         } finally {
             try {
                 if (tempZipFile?.exists() == true) {
@@ -230,11 +238,11 @@ object ApkInstaller {
     /**
      * Saves an unzipped raw APK file directly to cache, verifies validity, and launches the package installer.
      */
-    fun saveAndInstallDirectApk(
+    suspend fun saveAndInstallDirectApk(
         context: Context,
         responseBody: ResponseBody,
         fileName: String = "app-release.apk"
-    ): ApkExtractionResult {
+    ): ApkExtractionResult = withContext(Dispatchers.IO) {
         try {
             val downloadDir = File(context.cacheDir, "downloaded_apks").apply { mkdirs() }
             val cleanName = if (fileName.endsWith(".apk", ignoreCase = true)) fileName else "$fileName.apk"
@@ -257,18 +265,21 @@ object ApkInstaller {
 
             if (isTextOrHtmlError(targetFile)) {
                 val snippet = targetFile.readText().take(200)
-                return ApkExtractionResult(false, null, "Direct download returned an error page: $snippet")
+                return@withContext ApkExtractionResult(false, null, "Direct download returned an error page: $snippet")
             }
 
             if (isValidApk(context, targetFile)) {
-                installApk(context, targetFile)
-                return ApkExtractionResult(true, targetFile, null)
+                withContext(Dispatchers.Main) {
+                    installApk(context, targetFile)
+                }
+                return@withContext ApkExtractionResult(true, targetFile, null)
             } else {
-                return ApkExtractionResult(false, null, "Downloaded file '$fileName' ($sizeKb KB) is corrupted or not a valid Android package.")
+                return@withContext ApkExtractionResult(false, null, "Downloaded file '$fileName' ($sizeKb KB) is corrupted or not a valid Android package.")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save and install direct APK: ${e.message}", e)
-            return ApkExtractionResult(false, null, "Download exception: ${e.message}")
+            val errMessage = e.localizedMessage ?: e.message ?: e::class.java.simpleName
+            Log.e(TAG, "Failed to save and install direct APK: $errMessage", e)
+            return@withContext ApkExtractionResult(false, null, "Download error ($errMessage)")
         }
     }
 

@@ -345,7 +345,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.05.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.06.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -460,12 +460,21 @@ fun SettingsScreen(
 
 @Composable
 fun WhatsNewContent() {
-    var expandedVersion by remember { mutableStateOf<String?>("1.05.00") }
+    var expandedVersion by remember { mutableStateOf<String?>("1.06.00") }
 
     val updates = listOf(
         UpdateItem(
-            version = "1.05.00",
+            version = "1.06.00",
             date = "Current Update",
+            notes = listOf(
+                "Background Thread Coroutines Dispatcher: Fixed NetworkOnMainThreadException when downloading and streaming workflow artifact ZIPs by moving all stream reading, decompression, and file I/O to Dispatchers.IO.",
+                "UI-Thread Installer Launch: Ensured Android Package Installer intents run cleanly on Dispatchers.Main context.",
+                "Non-Null Diagnostic Exceptions: Upgraded error formatting to ensure clear, descriptive exception messages instead of null error cards."
+            )
+        ),
+        UpdateItem(
+            version = "1.05.00",
+            date = "Previous Update",
             notes = listOf(
                 "S3/Azure Redirect Fix: Stripped Authorization headers on cross-host redirects so pre-signed artifact download URLs from GitHub Actions and S3/Azure storage work without 400/403 errors.",
                 "Multi-Phase APK Extraction Engine: Added ZipFile, ZipInputStream, and nested ZIP search capabilities to unpack APKs from any workflow artifact layout.",

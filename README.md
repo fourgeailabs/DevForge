@@ -11,6 +11,11 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.06.00
+- **Background Thread Coroutine Execution**: Refactored `ApkInstaller` network streaming, Zip extraction, and file operations to run explicitly on `Dispatchers.IO` background threads. This eliminates `NetworkOnMainThreadException` during artifact downloads.
+- **Main Thread Installer Dispatch**: Ensured package installer intent dispatches (`ACTION_VIEW`) run cleanly on `Dispatchers.Main`.
+- **Diagnostic Exception Messaging**: Enhanced error formatting (`localizedMessage ?: message ?: simpleName`) so exceptions present meaningful, actionable details instead of `null` error cards.
+
 ### Version 1.05.00
 - **S3/Azure Cross-Host Redirect Fix**: Added a network interceptor to OkHttpClient that strips `Authorization` headers when OkHttp follows 302 redirects off `api.github.com` to Azure/S3 storage hosts. This prevents Azure Blob Storage and AWS S3 from rejecting pre-signed SAS URLs with 400 Bad Request or 403 Forbidden errors.
 - **Multi-Phase APK Extraction Engine**: Upgraded `ApkInstaller` with `ZipFile`, `ZipInputStream`, and nested ZIP archive search to reliably extract `.apk` binaries from any GitHub Actions artifact layout.
