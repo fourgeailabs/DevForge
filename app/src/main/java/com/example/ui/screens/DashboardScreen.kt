@@ -37,11 +37,14 @@ fun DashboardScreen(
     val repos by gitHubViewModel.repos.collectAsState()
     val isLoading by gitHubViewModel.isLoading.collectAsState()
     val error by gitHubViewModel.error.collectAsState()
+    val activeOwnerFilter by gitHubViewModel.activeOwnerFilter.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
+    var showPublicLinkDialog by remember { mutableStateOf(false) }
+    var publicUrlInput by remember { mutableStateOf("") }
 
     LaunchedEffect(githubPat) {
-        if (githubPat.isNotEmpty()) {
+        if (githubPat.isNotEmpty() && activeOwnerFilter == null) {
             gitHubViewModel.fetchRepos(githubPat)
         }
     }
@@ -50,7 +53,8 @@ fun DashboardScreen(
         if (searchQuery.isBlank()) repos
         else repos.filter {
             it.name.contains(searchQuery, ignoreCase = true) ||
-                    (it.description?.contains(searchQuery, ignoreCase = true) == true)
+                    (it.description?.contains(searchQuery, ignoreCase = true) == true) ||
+                    it.full_name.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -82,7 +86,7 @@ fun DashboardScreen(
                                 fontSize = 18.sp
                             )
                             Text(
-                                "${repos.size} repos connected",
+                                if (activeOwnerFilter != null) "Viewing $activeOwnerFilter" else "${repos.size} repos connected",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -91,8 +95,21 @@ fun DashboardScreen(
                 },
                 actions = {
                     IconButton(
+                        onClick = { showPublicLinkDialog = true }
+                    ) {
+                        Icon(
+                            Icons.Default.Public,
+                            contentDescription = "Explore Public Link",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(
                         onClick = {
-                            if (githubPat.isNotEmpty()) gitHubViewModel.fetchRepos(githubPat)
+                            if (activeOwnerFilter != null) {
+                                gitHubViewModel.fetchPublicRepoOrUser(activeOwnerFilter!!, githubPat)
+                            } else if (githubPat.isNotEmpty()) {
+                                gitHubViewModel.fetchRepos(githubPat)
+                            }
                         }
                     ) {
                         Icon(
@@ -125,25 +142,174 @@ fun DashboardScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Search repositories...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear")
-                        }
-                    }
-                },
+            // 1. REPO LINK & CREATOR SEARCH BAR AT TOP OF HOME SCREEN
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                singleLine = true
-            )
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Public,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Explore Repo or Creator Link",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = publicUrlInput,
+                            onValueChange = { publicUrlInput = it },
+                            placeholder = { Text("URL or handle e.g. fourgeailabs") },
+                            leadingIcon = { Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            trailingIcon = {
+                                if (publicUrlInput.isNotEmpty()) {
+                                    IconButton(onClick = { publicUrlInput = "" }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                if (publicUrlInput.isNotBlank()) {
+                                    gitHubViewModel.fetchPublicRepoOrUser(publicUrlInput, githubPat)
+                                }
+                            },
+                            enabled = publicUrlInput.isNotBlank(),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(52.dp)
+                        ) {
+                            Text("Explore", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // GitHub PAT Token Prompt if not configured
+            if (githubPat.isEmpty() && activeOwnerFilter == null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .clickable { onNavigateToSettings() }
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.VpnKey,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Set GitHub API Key in Settings to view private repos & trigger builds",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // Active Filter Chip
+            if (activeOwnerFilter != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Public,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Showing public filter: $activeOwnerFilter",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { gitHubViewModel.clearOwnerFilter(githubPat) },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Clear filter",
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            // Filter Search Bar
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Filter loaded repositories...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear")
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = true
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -157,7 +323,7 @@ fun DashboardScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Fetching your GitHub Repositories...")
+                        Text("Fetching GitHub Repositories...")
                     }
                 }
             } else if (error != null && repos.isEmpty()) {
@@ -171,8 +337,13 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Button(onClick = { onNavigateToSettings() }) {
-                            Text("Check GitHub Token in Settings")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { showPublicLinkDialog = true }) {
+                                Text("Paste Public Link")
+                            }
+                            OutlinedButton(onClick = { onNavigateToSettings() }) {
+                                Text("Check Token Settings")
+                            }
                         }
                     }
                 }
@@ -183,11 +354,19 @@ fun DashboardScreen(
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        if (searchQuery.isNotEmpty()) "No repositories found matching '$searchQuery'."
-                        else "No repositories found on this GitHub account.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            if (searchQuery.isNotEmpty()) "No repositories found matching '$searchQuery'."
+                            else "No repositories found on this account or filter.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = { showPublicLinkDialog = true }) {
+                            Icon(Icons.Default.Public, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Paste Public Creator / Repo Link")
+                        }
+                    }
                 }
             } else {
                 LazyColumn(
@@ -195,6 +374,41 @@ fun DashboardScreen(
                     contentPadding = PaddingValues(bottom = 32.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
+                    // AI Studio Export Automation Helper Banner
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.AutoMode,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "Automate AI Studio to Mobile APKs",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    "When AI Studio completes an app, click Settings -> 'Export to GitHub' to sync. Select your repo below to build and download APKs automatically!",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                )
+                            }
+                        }
+                    }
+
                     items(filteredRepos) { repo ->
                         RepositoryCard(
                             repo = repo,
@@ -208,6 +422,56 @@ fun DashboardScreen(
                     }
                 }
             }
+        }
+
+        if (showPublicLinkDialog) {
+            AlertDialog(
+                onDismissRequest = { showPublicLinkDialog = false },
+                title = { Text("Explore Public Repo / Creator") },
+                text = {
+                    Column {
+                        Text(
+                            "Paste any GitHub public repository link or creator profile page:",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = publicUrlInput,
+                            onValueChange = { publicUrlInput = it },
+                            placeholder = { Text("e.g. https://github.com/fourgeailabs") },
+                            leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "Examples:\n• https://github.com/fourgeailabs\n• fourgeailabs/DevForge",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (publicUrlInput.isNotBlank()) {
+                                gitHubViewModel.fetchPublicRepoOrUser(publicUrlInput, githubPat)
+                                showPublicLinkDialog = false
+                            }
+                        },
+                        enabled = publicUrlInput.isNotBlank()
+                    ) {
+                        Text("Explore")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPublicLinkDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }

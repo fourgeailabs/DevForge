@@ -19,14 +19,18 @@ class GitHubViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _activeOwnerFilter = MutableStateFlow<String?>(null)
+    val activeOwnerFilter: StateFlow<String?> = _activeOwnerFilter.asStateFlow()
+
     fun fetchRepos(pat: String) {
         if (pat.isEmpty()) {
-            _error.value = "GitHub PAT not configured in Settings."
+            _error.value = "GitHub PAT not configured."
             return
         }
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
+            _activeOwnerFilter.value = null
             try {
                 // Ensure Bearer prefix is used
                 val authHeader = if (pat.startsWith("Bearer ")) pat else "Bearer $pat"
@@ -39,4 +43,71 @@ class GitHubViewModel : ViewModel() {
             }
         }
     }
+
+    /**
+     * Resolves a public GitHub repository link (e.g. https://github.com/fourgeailabs/DevForge or owner/repo)
+     * or a GitHub creator page (e.g. https://github.com/fourgeailabs or fourgeailabs).
+     */
+    fun fetchPublicRepoOrUser(urlOrHandle: String, pat: String = "") {
+        val cleanInput = urlOrHandle.trim()
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .removePrefix("www.")
+            .removePrefix("github.com/")
+            .removeSuffix(".git")
+            .trim('/')
+
+        if (cleanInput.isEmpty()) {
+            _error.value = "Please enter a valid GitHub repository or creator URL."
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val authHeader = if (pat.isNotBlank()) (if (pat.startsWith("Bearer ")) pat else "Bearer $pat") else null
+                val parts = cleanInput.split("/")
+
+                if (parts.size >= 2) {
+                    // Direct owner/repo link
+                    val owner = parts[0]
+                    val repo = parts[1]
+                    _activeOwnerFilter.value = "$owner/$repo"
+                    val singleRepo = RetrofitClient.githubService.getSingleRepo(authHeader, owner, repo)
+                    _repos.value = listOf(singleRepo)
+                } else {
+                    // Creator / Username / Org
+                    val username = parts[0]
+                    _activeOwnerFilter.value = username
+                    try {
+                        val userRepos = RetrofitClient.githubService.getPublicUserRepos(authHeader, username)
+                        if (userRepos.isNotEmpty()) {
+                            _repos.value = userRepos
+                        } else {
+                            val orgRepos = RetrofitClient.githubService.getPublicOrgRepos(authHeader, username)
+                            _repos.value = orgRepos
+                        }
+                    } catch (_: Exception) {
+                        val orgRepos = RetrofitClient.githubService.getPublicOrgRepos(authHeader, username)
+                        _repos.value = orgRepos
+                    }
+                }
+            } catch (e: Exception) {
+                _error.value = "Unable to load public GitHub repository or creator: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun clearOwnerFilter(pat: String) {
+        _activeOwnerFilter.value = null
+        if (pat.isNotEmpty()) {
+            fetchRepos(pat)
+        } else {
+            _repos.value = emptyList()
+        }
+    }
 }
+

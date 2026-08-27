@@ -47,15 +47,14 @@ fun RepoBuildScreen(
     val runs by buildViewModel.runs.collectAsState()
     val artifactsMap by buildViewModel.artifactsMap.collectAsState()
     val latestRepoArtifact by buildViewModel.latestRepoArtifact.collectAsState()
+    val latestDirectApk by buildViewModel.latestDirectApk.collectAsState()
     val statusState by buildViewModel.statusState.collectAsState()
     val isLoading by buildViewModel.isLoading.collectAsState()
 
     val latestRun = runs.firstOrNull()
 
     LaunchedEffect(owner, repo, githubPat) {
-        if (githubPat.isNotEmpty()) {
-            buildViewModel.loadRepoActions(owner, repo, githubPat)
-        }
+        buildViewModel.loadRepoActions(owner, repo, githubPat)
     }
 
     Scaffold(
@@ -126,6 +125,92 @@ fun RepoBuildScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize()
             ) {
+            // PRIORITIZED: Creator's Direct Pre-Built APK Banner
+            item {
+                if (latestDirectApk != null) {
+                    val directApk = latestDirectApk!!
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Verified,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            "PRIORITIZED CREATOR APK",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = directApk.apkAssetName,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "${directApk.releaseName} (${directApk.tagName}) • ${directApk.sizeBytes / 1024} KB",
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Button(
+                                onClick = {
+                                    buildViewModel.downloadDirectApkFile(
+                                        context = context,
+                                        downloadUrl = directApk.apkDownloadUrl,
+                                        fileName = directApk.apkAssetName,
+                                        token = githubPat
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Icon(Icons.Default.GetApp, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Download Creator's Pre-Built APK", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
             // Most Recent Build & Trigger Card
             item {
                 Card(
@@ -229,7 +314,7 @@ fun RepoBuildScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = buildViewModel.formatIsoTimestamp(latestRun.created_at),
+                                    text = buildViewModel.formatIsoTimestamp(latestRun.run_started_at ?: latestRun.updated_at ?: latestRun.created_at),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

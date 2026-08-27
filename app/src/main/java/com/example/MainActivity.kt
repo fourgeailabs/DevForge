@@ -18,7 +18,6 @@ import com.example.auth.AuthViewModel
 import com.example.settings.SettingsViewModel
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.EditorScreen
-import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.RepoBuildScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.theme.MyApplicationTheme
@@ -32,7 +31,6 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
-      val userState by authViewModel.userState.collectAsState()
 
       MyApplicationTheme(darkTheme = isDarkMode) {
         Surface(
@@ -40,19 +38,8 @@ class MainActivity : ComponentActivity() {
             color = MaterialTheme.colorScheme.background
         ) {
             val navController = rememberNavController()
-            val startDest = if (userState != null) "dashboard" else "login"
             
-            NavHost(navController = navController, startDestination = startDest) {
-                composable("login") {
-                    LoginScreen(
-                        authViewModel = authViewModel,
-                        onNavigateToDashboard = {
-                            navController.navigate("dashboard") {
-                                popUpTo("login") { inclusive = true }
-                            }
-                        }
-                    )
-                }
+            NavHost(navController = navController, startDestination = "dashboard") {
                 composable("dashboard") {
                     DashboardScreen(
                         onNavigateToRepoBuild = { owner, repo ->
@@ -86,12 +73,7 @@ class MainActivity : ComponentActivity() {
                     SettingsScreen(
                         authViewModel = authViewModel,
                         settingsViewModel = settingsViewModel,
-                        onNavigateBack = { navController.popBackStack() },
-                        onSignOut = {
-                            navController.navigate("login") {
-                                popUpTo("dashboard") { inclusive = true }
-                            }
-                        }
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
             }

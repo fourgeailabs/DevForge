@@ -10,6 +10,19 @@ GitHub: [https://github.com/fourgeailabs](https://github.com/fourgeailabs)
 GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com/fourgeailabs/DevForge)
 
 ## Recent Updates
+
+### Version 1.04.00
+- **Prioritized Pre-Built Unzipped APK Installer**: Automatically scans GitHub Releases for direct `.apk` assets uploaded by creators. If an unzipped `.apk` is available, DevForge Pro prioritizes it with a highlighted banner at the top of the repository screen, allowing 1-tap direct download and installation.
+- **Purged Mandatory Login Screen**: Completely removed mandatory login gating. The app opens directly to the Dashboard home screen with full guest capabilities.
+- **Settings API Key Hub**: Integrated GitHub Personal Access Token authentication directly in the Settings menu with step-by-step creation guidance and connection status.
+- **Top Home Search Bar**: Moved the repository and creator link search bar directly to the top of the home screen for instant access.
+
+### Version 1.03.00
+- **Public Repository & Creator Explorer**: Access public GitHub repositories or creator profile pages by simply pasting a GitHub link or creator handle (e.g. `https://github.com/fourgeailabs` or `fourgeailabs/DevForge`) without needing a PAT token.
+- **AI Studio Automated Export Integration**: Full workflow guidance for Google AI Studio apps. Export apps directly from AI Studio to GitHub (`Settings` -> `Export to GitHub`), then monitor, trigger, and install APK builds inside DevForge Pro.
+- **Robust ZipFile Extraction Engine**: Upgraded stream-based APK installer to use local temp files and `ZipFile` extraction to resolve unpacking errors across all Android devices.
+- **Accurate Elapsed Build Timer**: Corrected workflow run duration calculations using `run_started_at` timestamps for re-runs.
+
 ### Version 1.02.00
 - **Pull to Refresh**: Swipe down on the repository actions screen to manually refresh build runs and artifact availability status from GitHub.
 - **Direct Build Rerun**: Dedicated 1-tap re-run button for the most recent workflow run on GitHub Actions.
@@ -18,7 +31,7 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ### Version 1.01.00
 - **GitHub OAuth / PAT Authentication**: Dedicated login screen to authenticate directly using GitHub Personal Access Tokens.
-- **Repository Browser**: Beautiful, modern UI for browsing user GitHub repositories directly inside the mobile app.
+- **Repository Browser**: Modern UI for browsing user GitHub repositories directly inside the mobile app.
 - **GitHub Actions APK Builder**: Directly trigger GitHub Actions `build.yml` workflows to compile APKs in the cloud.
 - **Live Build Progress & Status**: Real-time progress monitoring of workflow jobs and statuses (`queued`, `in_progress`, `completed`).
 - **APK Download & Auto Sideloading**: Download built APK artifacts directly to the device and initiate seamless package installation.
@@ -28,7 +41,8 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 ---
 
 ## Features
-- **GitHub Repositories**: Browse private and public repositories.
+- **GitHub Repositories**: Browse private and public repositories or explore public creators.
+- **AI Studio Integration**: Automatically track and compile APKs for exported Google AI Studio projects.
 - **Cloud APK Compilation**: Trigger GitHub Actions workflows for automated APK creation.
 - **Automated Sideloading**: Extract APK artifacts and trigger native Android installer.
 - **AI Coding Companion**: Powered by Gemini 3.5 Flash for code reviews and auto-repairs.

@@ -66,6 +66,16 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun continueAsGuest() {
+        _userState.value = User(
+            uid = "guest_user",
+            name = "Public Explorer",
+            email = "",
+            isLoggedIn = true,
+            avatarUrl = null
+        )
+    }
+
     fun signOut() {
         viewModelScope.launch {
             settingsRepository.setGithubPat("")

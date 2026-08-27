@@ -23,6 +23,15 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+data class DirectApkReleaseInfo(
+    val releaseName: String,
+    val tagName: String,
+    val apkAssetName: String,
+    val apkDownloadUrl: String,
+    val sizeBytes: Long,
+    val publishedAt: String?
+)
+
 sealed class BuildStatusState {
     object Idle : BuildStatusState()
     object Triggering : BuildStatusState()
@@ -47,6 +56,9 @@ class RepoBuildViewModel : ViewModel() {
     private val _latestRepoArtifact = MutableStateFlow<GitHubArtifact?>(null)
     val latestRepoArtifact: StateFlow<GitHubArtifact?> = _latestRepoArtifact.asStateFlow()
 
+    private val _latestDirectApk = MutableStateFlow<DirectApkReleaseInfo?>(null)
+    val latestDirectApk: StateFlow<DirectApkReleaseInfo?> = _latestDirectApk.asStateFlow()
+
     private val _statusState = MutableStateFlow<BuildStatusState>(BuildStatusState.Idle)
     val statusState: StateFlow<BuildStatusState> = _statusState.asStateFlow()
 
@@ -55,9 +67,10 @@ class RepoBuildViewModel : ViewModel() {
 
     private var pollingJob: Job? = null
 
+    private var localTriggerTimeMs: Long? = null
+
     fun loadRepoActions(owner: String, repo: String, token: String) {
-        if (token.isEmpty()) return
-        val authHeader = if (token.startsWith("Bearer ")) token else "Bearer $token"
+        val authHeader = if (token.isNotBlank()) (if (token.startsWith("Bearer ")) token else "Bearer $token") else null
 
         viewModelScope.launch {
             _isLoading.value = true
@@ -85,6 +98,29 @@ class RepoBuildViewModel : ViewModel() {
                     _latestRepoArtifact.value = latest
                 } catch (_: Exception) {}
 
+                // PRIORITIZE CREATOR'S PRE-BUILT UNZIPPED APK RELEASE ASSETS
+                try {
+                    val releases = RetrofitClient.githubService.getReleases(authHeader, owner, repo)
+                    var foundDirectApk: DirectApkReleaseInfo? = null
+                    for (release in releases) {
+                        val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }
+                        if (apkAsset != null) {
+                            foundDirectApk = DirectApkReleaseInfo(
+                                releaseName = release.name ?: release.tag_name,
+                                tagName = release.tag_name,
+                                apkAssetName = apkAsset.name,
+                                apkDownloadUrl = apkAsset.browser_download_url,
+                                sizeBytes = apkAsset.size,
+                                publishedAt = release.published_at ?: release.created_at
+                            )
+                            break
+                        }
+                    }
+                    _latestDirectApk.value = foundDirectApk
+                } catch (e: Exception) {
+                    Log.d("RepoBuildViewModel", "Releases fetch notice: ${e.message}")
+                }
+
                 // Check if there is an active building run currently
                 val activeRun = response.workflow_runs.firstOrNull { it.status == "in_progress" || it.status == "queued" }
                 if (activeRun != null && pollingJob?.isActive != true) {
@@ -106,10 +142,11 @@ class RepoBuildViewModel : ViewModel() {
      * 3. If dispatch fails or isn't configured, falls back to re-running the most recent build!
      */
     fun triggerBuild(owner: String, repo: String, token: String, ref: String = "main", customGeminiKey: String = "") {
-        if (token.isEmpty()) {
-            _statusState.value = BuildStatusState.Error("GitHub token missing.")
+        if (token.isBlank()) {
+            _statusState.value = BuildStatusState.Error("Please sign in with a GitHub Personal Access Token to trigger builds.")
             return
         }
+        localTriggerTimeMs = System.currentTimeMillis()
         val authHeader = if (token.startsWith("Bearer ")) token else "Bearer $token"
 
         viewModelScope.launch {
@@ -172,7 +209,11 @@ class RepoBuildViewModel : ViewModel() {
      * Directly re-runs a specific or most recent workflow run on GitHub Actions.
      */
     fun rerunBuild(owner: String, repo: String, token: String, runId: Long, customGeminiKey: String = "") {
-        if (token.isEmpty()) return
+        if (token.isBlank()) {
+            _statusState.value = BuildStatusState.Error("Please sign in with a GitHub Personal Access Token to rerun builds.")
+            return
+        }
+        localTriggerTimeMs = System.currentTimeMillis()
         val authHeader = if (token.startsWith("Bearer ")) token else "Bearer $token"
 
         viewModelScope.launch {
@@ -193,7 +234,7 @@ class RepoBuildViewModel : ViewModel() {
 
     fun startPollingRuns(owner: String, repo: String, token: String, customGeminiKey: String = "") {
         pollingJob?.cancel()
-        val authHeader = if (token.startsWith("Bearer ")) token else "Bearer $token"
+        val authHeader = if (token.isNotBlank()) (if (token.startsWith("Bearer ")) token else "Bearer $token") else null
         val geminiKey = customGeminiKey.ifEmpty { BuildConfig.GEMINI_API_KEY }
 
         pollingJob = viewModelScope.launch {
@@ -207,7 +248,7 @@ class RepoBuildViewModel : ViewModel() {
 
                     val latestRun = response.workflow_runs.firstOrNull()
                     if (latestRun != null) {
-                        val elapsedSeconds = calculateElapsedSeconds(latestRun.created_at)
+                        val elapsedSeconds = calculateElapsedSeconds(latestRun, localTriggerTimeMs)
                         val elapsedTimeStr = formatDuration(elapsedSeconds)
 
                         // If building, query Gemini API every 20s for completion estimate
@@ -305,8 +346,13 @@ class RepoBuildViewModel : ViewModel() {
         repo: String,
         token: String
     ) {
-        if (token.isEmpty()) return
-        val authHeader = if (token.startsWith("Bearer ")) token else "Bearer $token"
+        val directApk = _latestDirectApk.value
+        if (directApk != null) {
+            downloadDirectApkFile(context, directApk.apkDownloadUrl, directApk.apkAssetName, token)
+            return
+        }
+
+        val authHeader = if (token.isNotBlank()) (if (token.startsWith("Bearer ")) token else "Bearer $token") else null
 
         viewModelScope.launch {
             _statusState.value = BuildStatusState.Downloading("Finding latest available APK ZIP in repository...")
@@ -330,9 +376,46 @@ class RepoBuildViewModel : ViewModel() {
         }
     }
 
+    fun downloadDirectApkFile(
+        context: Context,
+        downloadUrl: String,
+        fileName: String,
+        token: String = ""
+    ) {
+        val authHeader = if (token.isNotBlank()) (if (token.startsWith("Bearer ")) token else "Bearer $token") else null
+        viewModelScope.launch {
+            _statusState.value = BuildStatusState.Downloading("Downloading creator's pre-built APK '$fileName'...")
+            try {
+                val responseBody = RetrofitClient.githubService.downloadArtifactZip(authHeader, downloadUrl)
+                val downloadDir = java.io.File(context.cacheDir, "downloaded_apks").apply { mkdirs() }
+                val apkFile = java.io.File(downloadDir, if (fileName.isNotBlank()) fileName else "creator_release.apk")
+
+                responseBody.byteStream().use { input ->
+                    java.io.FileOutputStream(apkFile).use { output ->
+                        val buffer = ByteArray(32768)
+                        var bytesRead: Int
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            output.write(buffer, 0, bytesRead)
+                        }
+                        output.flush()
+                    }
+                }
+
+                if (apkFile.exists() && apkFile.length() > 0) {
+                    _statusState.value = BuildStatusState.Success("Pre-built APK downloaded! Launching installer...")
+                    ApkInstaller.installApk(context, apkFile)
+                } else {
+                    _statusState.value = BuildStatusState.Error("Downloaded APK file is empty.")
+                }
+            } catch (e: Exception) {
+                _statusState.value = BuildStatusState.Error("Failed to download direct APK: ${e.message}")
+            }
+        }
+    }
+
     private suspend fun downloadAndInstallArtifact(
         context: Context,
-        authHeader: String,
+        authHeader: String?,
         artifact: GitHubArtifact
     ) {
         _statusState.value = BuildStatusState.Downloading("Downloading '${artifact.name}' ZIP (${artifact.size_in_bytes / 1024} KB)...")
@@ -351,19 +434,35 @@ class RepoBuildViewModel : ViewModel() {
         }
     }
 
-    private fun calculateElapsedSeconds(isoDateStr: String?): Long {
-        if (isoDateStr.isNullOrEmpty()) return 0
-        return try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-            sdf.timeZone = TimeZone.getTimeZone("UTC")
-            val date = sdf.parse(isoDateStr)
-            if (date != null) {
-                val diffMs = System.currentTimeMillis() - date.time
-                (diffMs / 1000).coerceAtLeast(0)
-            } else 0
-        } catch (_: Exception) {
-            0
+    private fun calculateElapsedSeconds(run: GitHubWorkflowRun, triggerTimeMs: Long? = null): Long {
+        val isoStr = run.run_started_at
+            ?: (if (run.status == "in_progress" || run.status == "queued") run.updated_at else null)
+            ?: run.created_at
+
+        var secondsFromIso: Long? = null
+        if (!isoStr.isNullOrEmpty()) {
+            try {
+                val cleanStr = isoStr.replace(Regex("\\.\\d+Z$"), "Z")
+                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+                sdf.timeZone = TimeZone.getTimeZone("UTC")
+                val date = sdf.parse(cleanStr)
+                if (date != null) {
+                    secondsFromIso = ((System.currentTimeMillis() - date.time) / 1000).coerceAtLeast(0)
+                }
+            } catch (_: Exception) {}
         }
+
+        val secondsFromTrigger = if (triggerTimeMs != null && triggerTimeMs > 0) {
+            ((System.currentTimeMillis() - triggerTimeMs) / 1000).coerceAtLeast(0)
+        } else null
+
+        if (secondsFromTrigger != null && secondsFromTrigger < 1800) {
+            if (secondsFromIso == null || run.run_started_at == null || secondsFromIso > secondsFromTrigger + 120) {
+                return secondsFromTrigger
+            }
+        }
+
+        return secondsFromIso ?: secondsFromTrigger ?: 0
     }
 
     private fun formatDuration(seconds: Long): String {
@@ -375,9 +474,10 @@ class RepoBuildViewModel : ViewModel() {
     fun formatIsoTimestamp(isoDateStr: String?): String {
         if (isoDateStr.isNullOrEmpty()) return "Unknown"
         return try {
+            val cleanStr = isoDateStr.replace(Regex("\\.\\d+Z$"), "Z")
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
             inputFormat.timeZone = TimeZone.getTimeZone("UTC")
-            val date = inputFormat.parse(isoDateStr)
+            val date = inputFormat.parse(cleanStr)
             if (date != null) {
                 val outputFormat = SimpleDateFormat("MMM dd, yyyy • HH:mm:ss 'UTC'", Locale.US)
                 outputFormat.format(date)
