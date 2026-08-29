@@ -314,6 +314,63 @@ fun SettingsScreen(
                 }
             }
 
+            // External Links & Tools
+            item {
+                Text(
+                    "Tools & External Resources",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ai.studio"))
+                            context.startActivity(intent)
+                        },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    "Google AI Studio",
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp
+                                )
+                                Text(
+                                    "Open ai.studio in web browser",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = "Open Link",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
             // What's New & Updates
             item {
                 OutlinedButton(
@@ -345,7 +402,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.07.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.10.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -460,12 +517,35 @@ fun SettingsScreen(
 
 @Composable
 fun WhatsNewContent() {
-    var expandedVersion by remember { mutableStateOf<String?>("1.07.00") }
+    var expandedVersion by remember { mutableStateOf<String?>("1.10.00") }
 
     val updates = listOf(
         UpdateItem(
-            version = "1.07.00",
+            version = "1.10.00",
             date = "Current Update",
+            notes = listOf(
+                "UI Streamlining: Removed the 'Paste Public Creator / Repo Link' button from empty/error dashboard views to deliver a clean repository list interface."
+            )
+        ),
+        UpdateItem(
+            version = "1.09.00",
+            date = "Previous Update",
+            notes = listOf(
+                "Inline Explore Card Removal: Removed inline repository explore card from dashboard for a cleaner home layout.",
+                "Globe Action Icon & Dialog Preserved: Kept Globe action icon in top navigation bar fully functional with public repository / creator search dialog."
+            )
+        ),
+        UpdateItem(
+            version = "1.08.00",
+            date = "Previous Update",
+            notes = listOf(
+                "Google AI Studio Settings Link: Added direct link to Google AI Studio (ai.studio) in the Settings menu under Tools & External Resources.",
+                "UI Clean Up: Removed AI Studio helper banners and extraneous textual references from the main dashboard."
+            )
+        ),
+        UpdateItem(
+            version = "1.07.00",
+            date = "Previous Update",
             notes = listOf(
                 "GitHub Release Asset API Downloading: Integrated GitHub REST API asset endpoint with Accept: application/octet-stream to prevent 404 Not Found errors on release assets across public & private repositories.",
                 "OkHttp Cross-Host Header Preservation: Updated network interceptor to keep Authorization headers on github.com while safely stripping headers on redirects to external S3/Azure storage hosts.",
@@ -506,7 +586,7 @@ fun WhatsNewContent() {
             date = "Previous Update",
             notes = listOf(
                 "Public Repository & Creator Link Explorer: Option in login menu & dashboard allowing access to public repos by pasting any GitHub link or creator handle.",
-                "AI Studio Export Integration: Guidance and workflow helper for automatically syncing Google AI Studio projects to GitHub repos and building mobile APKs.",
+                "Repository Workflow Integration: Guidance and workflow helper for automatically syncing projects to GitHub repos and building mobile APKs.",
                 "Robust APK Extraction Engine: Streamlined ZipFile extractor preventing archive unpack failures on all Android devices.",
                 "Accurate Build Timer: Prioritized run_started_at timestamps for precise elapsed time calculation on re-runs."
             )

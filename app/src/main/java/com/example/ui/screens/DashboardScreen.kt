@@ -142,70 +142,6 @@ fun DashboardScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // 1. REPO LINK & CREATOR SEARCH BAR AT TOP OF HOME SCREEN
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Public,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Explore Repo or Creator Link",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = publicUrlInput,
-                            onValueChange = { publicUrlInput = it },
-                            placeholder = { Text("URL or handle e.g. fourgeailabs") },
-                            leadingIcon = { Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                            trailingIcon = {
-                                if (publicUrlInput.isNotEmpty()) {
-                                    IconButton(onClick = { publicUrlInput = "" }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(18.dp))
-                                    }
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(
-                            onClick = {
-                                if (publicUrlInput.isNotBlank()) {
-                                    gitHubViewModel.fetchPublicRepoOrUser(publicUrlInput, githubPat)
-                                }
-                            },
-                            enabled = publicUrlInput.isNotBlank(),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.height(52.dp)
-                        ) {
-                            Text("Explore", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
 
             // GitHub PAT Token Prompt if not configured
             if (githubPat.isEmpty() && activeOwnerFilter == null) {
@@ -337,13 +273,8 @@ fun DashboardScreen(
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { showPublicLinkDialog = true }) {
-                                Text("Paste Public Link")
-                            }
-                            OutlinedButton(onClick = { onNavigateToSettings() }) {
-                                Text("Check Token Settings")
-                            }
+                        Button(onClick = { onNavigateToSettings() }) {
+                            Text("Check Token Settings")
                         }
                     }
                 }
@@ -354,19 +285,11 @@ fun DashboardScreen(
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            if (searchQuery.isNotEmpty()) "No repositories found matching '$searchQuery'."
-                            else "No repositories found on this account or filter.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(onClick = { showPublicLinkDialog = true }) {
-                            Icon(Icons.Default.Public, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Paste Public Creator / Repo Link")
-                        }
-                    }
+                    Text(
+                        if (searchQuery.isNotEmpty()) "No repositories found matching '$searchQuery'."
+                        else "No repositories found on this account or filter.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             } else {
                 LazyColumn(
@@ -374,41 +297,6 @@ fun DashboardScreen(
                     contentPadding = PaddingValues(bottom = 32.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // AI Studio Export Automation Helper Banner
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                            ),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.AutoMode,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "Automate AI Studio to Mobile APKs",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    "When AI Studio completes an app, click Settings -> 'Export to GitHub' to sync. Select your repo below to build and download APKs automatically!",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                                )
-                            }
-                        }
-                    }
-
                     items(filteredRepos) { repo ->
                         RepositoryCard(
                             repo = repo,

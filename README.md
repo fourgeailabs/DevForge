@@ -11,6 +11,17 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.10.00
+- **UI Streamlining**: Removed the "Paste Public Creator / Repo Link" button from empty and error state dashboard views to provide a clean repository list layout.
+
+### Version 1.09.00
+- **Dashboard Layout Streamlining**: Removed the inline "Explore Repo or Creator Link" card from the main dashboard for a cleaner repository list interface.
+- **TopAppBar Globe Link Preservation**: Retained the Globe icon button in the top navigation bar, keeping the public repo / creator URL search dialog fully functional.
+
+### Version 1.08.00
+- **Google AI Studio Settings Link**: Added a direct external link to Google AI Studio (`ai.studio`) in the Settings menu under Tools & External Resources.
+- **UI Clean Up**: Removed AI Studio helper banners and extraneous textual references from the main dashboard.
+
 ### Version 1.07.00
 - **GitHub Release Asset API Endpoint Integration**: Replaced direct web browser download URLs with the official GitHub REST API release asset endpoint (`/repos/{owner}/{repo}/releases/assets/{asset_id}`) using the `Accept: application/octet-stream` header. This prevents HTTP 404 Not Found errors on release assets across public & private repositories.
 - **OkHttp Cross-Host Header Preservation**: Preserved `Authorization` headers on requests directly targeting `github.com` while maintaining automatic header removal when redirecting off to third-party storage hosts (S3, Azure Blob Storage).
@@ -35,7 +46,7 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ### Version 1.03.00
 - **Public Repository & Creator Explorer**: Access public GitHub repositories or creator profile pages by simply pasting a GitHub link or creator handle (e.g. `https://github.com/fourgeailabs` or `fourgeailabs/DevForge`) without needing a PAT token.
-- **AI Studio Automated Export Integration**: Full workflow guidance for Google AI Studio apps. Export apps directly from AI Studio to GitHub (`Settings` -> `Export to GitHub`), then monitor, trigger, and install APK builds inside DevForge Pro.
+- **Repository Workflow Integration**: Full workflow guidance for GitHub repositories. Export apps directly to GitHub, then monitor, trigger, and install APK builds inside DevForge Pro.
 - **Robust ZipFile Extraction Engine**: Upgraded stream-based APK installer to use local temp files and `ZipFile` extraction to resolve unpacking errors across all Android devices.
 - **Accurate Elapsed Build Timer**: Corrected workflow run duration calculations using `run_started_at` timestamps for re-runs.
 
