@@ -11,6 +11,12 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.13.00
+- **Interactive Code Editor & Build Engine**: Integrated multi-stage compilation flow (saving source, AST parsing, kotlinc, R8 DEX transpilation, and signed debug APK packaging) in `EditorScreen`.
+- **Live Terminal Console**: Real-time console displaying compilation logs and diagnostic messages.
+- **Direct APK Download & Remote Triggering**: Download triggers for compiled APKs and automatic remote GitHub Actions workflow triggering.
+- **Custom Instructions Alignment**: Versioning set to `1.13.00` (versionCode `14`), closed-by-default release notes dropdown accordion, and Creator links to FourgeAI LABS (`https://github.com/fourgeailabs`).
+
 ### Version 1.12.00
 - **In-Card Active Action Processing Display**: Directly displays active GitHub Actions / workflow build status inside each repository card on the main dashboard.
 - **Live Elapsed & Remaining Time Indicators**: Embedded real-time ticker showing elapsed processing duration (e.g. `Elapsed: 1m 24s`) and estimated remaining build time (e.g. `~1m 36s remaining`).

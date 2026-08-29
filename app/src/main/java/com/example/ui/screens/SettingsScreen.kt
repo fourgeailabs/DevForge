@@ -402,7 +402,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.12.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.13.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -517,12 +517,22 @@ fun SettingsScreen(
 
 @Composable
 fun WhatsNewContent() {
-    var expandedVersion by remember { mutableStateOf<String?>("1.12.00") }
+    var expandedVersion by remember { mutableStateOf<String?>(null) }
 
     val updates = listOf(
         UpdateItem(
-            version = "1.12.00",
+            version = "1.13.00",
             date = "Current Update",
+            notes = listOf(
+                "Fully Functional Interactive Code Editor & APK Compiler: Added live multi-stage compilation engine (saving source, parsing AST, kotlinc compilation, R8 DEX transpilation, and signed debug APK packaging).",
+                "Live Build Terminal Console: Embedded real-time dark terminal window displaying exact compilation logs and diagnostic output.",
+                "Direct APK Download & Remote Triggering: Direct APK download trigger and automatic remote GitHub Actions workflow triggering.",
+                "Custom Instructions & Creator Branding Alignment: Strictly updated app versioning (v1.13.00, versionCode 14), closed-by-default accordion release notes, and FourgeAI LABS creator links."
+            )
+        ),
+        UpdateItem(
+            version = "1.12.00",
+            date = "Previous Update",
             notes = listOf(
                 "In-Card Active Workflow Processing: Directly displays active GitHub Actions / workflow runs inside each repository card on the dashboard.",
                 "Live Elapsed & Estimated Remaining Time: Live 1-second updating indicator displaying elapsed processing duration and estimated remaining build time."

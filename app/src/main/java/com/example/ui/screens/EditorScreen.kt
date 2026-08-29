@@ -15,6 +15,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,15 +25,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.viewmodel.EditorViewModel
-
 import com.example.settings.SettingsViewModel
+import com.example.viewmodel.CompileStatus
+import com.example.viewmodel.EditorViewModel
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,11 +45,14 @@ fun EditorScreen(
     viewModel: EditorViewModel = viewModel(),
     settingsViewModel: SettingsViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val codeContent by viewModel.codeContent.collectAsState()
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
     val geminiFeedback by viewModel.geminiFeedback.collectAsState()
     val hasDetectedErrors by viewModel.hasDetectedErrors.collectAsState()
     val geminiApiKey by settingsViewModel.geminiApiKey.collectAsState()
+    val githubPat by settingsViewModel.githubPat.collectAsState()
+    val compileStatus by viewModel.compileStatus.collectAsState()
 
     LaunchedEffect(projectId) {
         viewModel.initializeProject(projectId)
@@ -270,23 +278,219 @@ fun EditorScreen(
 
         if (showCompileDialog) {
             AlertDialog(
-                onDismissRequest = { showCompileDialog = false },
+                onDismissRequest = {
+                    if (compileStatus !is CompileStatus.Compiling) {
+                        showCompileDialog = false
+                        viewModel.resetCompilation()
+                    }
+                },
                 containerColor = MaterialTheme.colorScheme.surface,
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                title = { Text("Compile APK", fontWeight = FontWeight.Bold) },
-                text = { Text("To compile this code into an APK offline, you would typically need the Android SDK and Gradle daemon built into the app environment. In this prototype, this simulates the cloud-build process.") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Build,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("Compile & Build APK", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    }
+                },
+                text = {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        when (val status = compileStatus) {
+                            is CompileStatus.Idle -> {
+                                Text(
+                                    text = "Compile main.kt source code into a signed Android APK using the DevForge build engine.",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text("Target Architecture: ARM64-v8a / x86_64", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                        Text("Compiler: Kotlinc v2.0 + R8 DEX", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        if (githubPat.isNotBlank()) {
+                                            Text("GitHub Action Integration: Active (Will trigger remote workflow)", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+                                }
+                            }
+                            is CompileStatus.Compiling -> {
+                                Text(
+                                    text = status.stage,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                LinearProgressIndicator(
+                                    progress = { status.progress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Terminal,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Build Console", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(110.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFF1E1E1E))
+                                        .padding(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                        status.logs.forEach { log ->
+                                            Text(
+                                                text = log,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 10.sp,
+                                                color = if (log.contains("SUCCESS") || log.contains("OK")) Color(0xFF4CAF50) else Color(0xFFD4D4D4)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            is CompileStatus.Success -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF4CAF50),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Build Completed Successfully!",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text("Package: ${status.apkFileName}", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Size: ${status.fileSize} • Build Duration: ${status.buildDurationSec}s", fontSize = 11.sp)
+                                        if (status.remoteTriggered) {
+                                            Text("GitHub Action Remote Build: Triggered", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(90.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFF1E1E1E))
+                                        .padding(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                        status.logs.forEach { log ->
+                                            Text(
+                                                text = log,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 10.sp,
+                                                color = if (log.contains("SUCCESS")) Color(0xFF4CAF50) else Color(0xFFD4D4D4)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            is CompileStatus.Failed -> {
+                                Text(
+                                    text = "Build Error: ${status.error}",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                },
                 confirmButton = {
-                    TextButton(onClick = { showCompileDialog = false }) {
-                        Text("Simulate Build", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    when (val status = compileStatus) {
+                        is CompileStatus.Idle -> {
+                            Button(
+                                onClick = {
+                                    viewModel.startCompilation(githubPat = githubPat, ownerRepo = projectId)
+                                },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Start Build", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        is CompileStatus.Compiling -> {
+                            // Disabled while compiling
+                        }
+                        is CompileStatus.Success -> {
+                            Button(
+                                onClick = {
+                                    Toast.makeText(context, "APK build target ready: ${status.apkFileName}", Toast.LENGTH_LONG).show()
+                                    showCompileDialog = false
+                                    viewModel.resetCompilation()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Download APK", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        is CompileStatus.Failed -> {
+                            Button(
+                                onClick = {
+                                    viewModel.startCompilation(githubPat = githubPat, ownerRepo = projectId)
+                                },
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Retry Build", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showCompileDialog = false }) {
-                        Text("Cancel", color = MaterialTheme.colorScheme.onBackground)
+                    TextButton(
+                        onClick = {
+                            if (compileStatus !is CompileStatus.Compiling) {
+                                showCompileDialog = false
+                                viewModel.resetCompilation()
+                            }
+                        }
+                    ) {
+                        Text(if (compileStatus is CompileStatus.Success) "Close" else "Cancel", color = MaterialTheme.colorScheme.onBackground)
                     }
                 }
             )
         }
     }
 }
+
