@@ -3,6 +3,7 @@ package com.example.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.network.GitHubRepo
+import com.example.network.GitHubWorkflowRun
 import com.example.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,6 +13,9 @@ import kotlinx.coroutines.launch
 class GitHubViewModel : ViewModel() {
     private val _repos = MutableStateFlow<List<GitHubRepo>>(emptyList())
     val repos: StateFlow<List<GitHubRepo>> = _repos.asStateFlow()
+
+    private val _activeWorkflowRuns = MutableStateFlow<Map<String, GitHubWorkflowRun>>(emptyMap())
+    val activeWorkflowRuns: StateFlow<Map<String, GitHubWorkflowRun>> = _activeWorkflowRuns.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -36,6 +40,7 @@ class GitHubViewModel : ViewModel() {
                 val authHeader = if (pat.startsWith("Bearer ")) pat else "Bearer $pat"
                 val fetchedRepos = RetrofitClient.githubService.getUserRepos(authHeader)
                 _repos.value = fetchedRepos
+                checkActiveWorkflowRuns(pat)
             } catch (e: Exception) {
                 _error.value = "Failed to fetch repos: ${e.message}"
             } finally {
@@ -93,6 +98,7 @@ class GitHubViewModel : ViewModel() {
                         _repos.value = orgRepos
                     }
                 }
+                checkActiveWorkflowRuns(pat)
             } catch (e: Exception) {
                 val errMessage = if (e is retrofit2.HttpException && e.code() == 404) {
                     "GitHub repository or creator '$cleanInput' not found (HTTP 404). Check the repository name or enter your GitHub PAT in Settings for private repositories."
@@ -103,6 +109,41 @@ class GitHubViewModel : ViewModel() {
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    fun checkActiveWorkflowRuns(pat: String = "") {
+        val currentRepos = _repos.value
+        if (currentRepos.isEmpty()) return
+
+        viewModelScope.launch {
+            val authHeader = if (pat.isNotBlank()) (if (pat.startsWith("Bearer ")) pat else "Bearer $pat") else null
+            val updatedMap = _activeWorkflowRuns.value.toMutableMap()
+
+            currentRepos.forEach { repo ->
+                val parts = repo.full_name.split("/")
+                if (parts.size == 2) {
+                    try {
+                        val runsResp = RetrofitClient.githubService.getWorkflowRuns(
+                            token = authHeader,
+                            owner = parts[0],
+                            repo = parts[1],
+                            perPage = 5
+                        )
+                        val activeRun = runsResp.workflow_runs.firstOrNull { run ->
+                            run.status == "in_progress" || run.status == "queued" || run.status == "waiting" || run.status == "pending" || run.status == "requested"
+                        }
+                        if (activeRun != null) {
+                            updatedMap[repo.full_name] = activeRun
+                        } else {
+                            updatedMap.remove(repo.full_name)
+                        }
+                    } catch (_: Exception) {
+                        // Ignore transient network errors
+                    }
+                }
+            }
+            _activeWorkflowRuns.value = updatedMap
         }
     }
 

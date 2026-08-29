@@ -11,6 +11,10 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.12.00
+- **In-Card Active Action Processing Display**: Directly displays active GitHub Actions / workflow build status inside each repository card on the main dashboard.
+- **Live Elapsed & Remaining Time Indicators**: Embedded real-time ticker showing elapsed processing duration (e.g. `Elapsed: 1m 24s`) and estimated remaining build time (e.g. `~1m 36s remaining`).
+
 ### Version 1.11.00
 - **Banner Cleanup**: Completely removed the "Automate AI Studio to Mobile APKs" banner card from the layout.
 

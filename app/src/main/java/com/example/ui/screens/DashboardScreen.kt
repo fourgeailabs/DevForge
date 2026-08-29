@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,12 +19,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.network.GitHubRepo
+import com.example.network.GitHubWorkflowRun
 import com.example.settings.SettingsViewModel
 import com.example.viewmodel.GitHubViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,6 +43,7 @@ fun DashboardScreen(
 ) {
     val githubPat by settingsViewModel.githubPat.collectAsState()
     val repos by gitHubViewModel.repos.collectAsState()
+    val activeRuns by gitHubViewModel.activeWorkflowRuns.collectAsState()
     val isLoading by gitHubViewModel.isLoading.collectAsState()
     val error by gitHubViewModel.error.collectAsState()
     val activeOwnerFilter by gitHubViewModel.activeOwnerFilter.collectAsState()
@@ -42,6 +51,24 @@ fun DashboardScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showPublicLinkDialog by remember { mutableStateOf(false) }
     var publicUrlInput by remember { mutableStateOf("") }
+
+    var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            delay(1000)
+            currentTimeMs = System.currentTimeMillis()
+        }
+    }
+
+    LaunchedEffect(repos, githubPat) {
+        if (repos.isNotEmpty()) {
+            while (isActive) {
+                gitHubViewModel.checkActiveWorkflowRuns(githubPat)
+                delay(8000)
+            }
+        }
+    }
 
     LaunchedEffect(githubPat) {
         if (githubPat.isNotEmpty() && activeOwnerFilter == null) {
@@ -298,8 +325,11 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(filteredRepos) { repo ->
+                        val activeRun = activeRuns[repo.full_name]
                         RepositoryCard(
                             repo = repo,
+                            activeRun = activeRun,
+                            currentTimeMs = currentTimeMs,
                             onClick = {
                                 val parts = repo.full_name.split("/")
                                 if (parts.size == 2) {
@@ -364,9 +394,30 @@ fun DashboardScreen(
     }
 }
 
+private fun parseIsoToEpochMs(isoStr: String?): Long {
+    if (isoStr.isNullOrEmpty()) return System.currentTimeMillis()
+    return try {
+        val cleanStr = isoStr.replace(Regex("\\.\\d+Z$"), "Z")
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        val date = sdf.parse(cleanStr)
+        date?.time ?: System.currentTimeMillis()
+    } catch (_: Exception) {
+        System.currentTimeMillis()
+    }
+}
+
+private fun formatDuration(seconds: Long): String {
+    val mins = seconds / 60
+    val secs = seconds % 60
+    return if (mins > 0) "${mins}m ${secs}s" else "${secs}s"
+}
+
 @Composable
 fun RepositoryCard(
     repo: GitHubRepo,
+    activeRun: GitHubWorkflowRun? = null,
+    currentTimeMs: Long = System.currentTimeMillis(),
     onClick: () -> Unit
 ) {
     Card(
@@ -439,6 +490,153 @@ fun RepositoryCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2
                 )
+            }
+
+            if (activeRun != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val isQueued = activeRun.status == "queued" || activeRun.status == "waiting" || activeRun.status == "pending" || activeRun.status == "requested"
+                val startMs = parseIsoToEpochMs(activeRun.run_started_at ?: activeRun.created_at)
+                val elapsedSeconds = ((currentTimeMs - startMs) / 1000).coerceAtLeast(0)
+
+                val estimatedTotalSeconds = 180L
+                val remainingSeconds = estimatedTotalSeconds - elapsedSeconds
+
+                val elapsedText = formatDuration(elapsedSeconds)
+                val remainingText = if (isQueued) {
+                    "Starting shortly..."
+                } else if (remainingSeconds > 0) {
+                    "~${formatDuration(remainingSeconds)} remaining"
+                } else {
+                    "Finalizing build..."
+                }
+
+                val progress = if (isQueued) 0.08f else (elapsedSeconds.toFloat() / estimatedTotalSeconds.toFloat()).coerceIn(0.10f, 0.95f)
+
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                                val alpha by infiniteTransition.animateFloat(
+                                    initialValue = 0.4f,
+                                    targetValue = 1.0f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(800, easing = LinearEasing),
+                                        repeatMode = RepeatMode.Reverse
+                                    ),
+                                    label = "alpha"
+                                )
+
+                                Icon(
+                                    imageVector = Icons.Default.Sync,
+                                    contentDescription = "Action Processing",
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = activeRun.name ?: "Build Android APK",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Surface(
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = if (isQueued) "QUEUED" else "IN PROGRESS",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (isQueued) {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        } else {
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Elapsed: $elapsedText",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.HourglassTop,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = remainingText,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))

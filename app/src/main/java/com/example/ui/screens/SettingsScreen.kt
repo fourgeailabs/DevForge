@@ -402,7 +402,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.11.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.12.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -517,12 +517,20 @@ fun SettingsScreen(
 
 @Composable
 fun WhatsNewContent() {
-    var expandedVersion by remember { mutableStateOf<String?>("1.11.00") }
+    var expandedVersion by remember { mutableStateOf<String?>("1.12.00") }
 
     val updates = listOf(
         UpdateItem(
-            version = "1.11.00",
+            version = "1.12.00",
             date = "Current Update",
+            notes = listOf(
+                "In-Card Active Workflow Processing: Directly displays active GitHub Actions / workflow runs inside each repository card on the dashboard.",
+                "Live Elapsed & Estimated Remaining Time: Live 1-second updating indicator displaying elapsed processing duration and estimated remaining build time."
+            )
+        ),
+        UpdateItem(
+            version = "1.11.00",
+            date = "Previous Update",
             notes = listOf(
                 "Banner Cleanup: Completely removed the 'Automate AI Studio to Mobile APKs' helper card from the app layout."
             )
