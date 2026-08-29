@@ -50,7 +50,7 @@ fun EditorScreen(
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
     val geminiFeedback by viewModel.geminiFeedback.collectAsState()
     val hasDetectedErrors by viewModel.hasDetectedErrors.collectAsState()
-    val geminiApiKey by settingsViewModel.geminiApiKey.collectAsState()
+    val aiApiKey by settingsViewModel.aiApiKey.collectAsState()
     val githubPat by settingsViewModel.githubPat.collectAsState()
     val compileStatus by viewModel.compileStatus.collectAsState()
 
@@ -97,7 +97,7 @@ fun EditorScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.analyzeCodeWithGemini(geminiApiKey) },
+                        onClick = { viewModel.analyzeCodeWithGemini(aiApiKey) },
                         modifier = Modifier
                             .padding(end = 4.dp)
                             .clip(CircleShape)
@@ -192,7 +192,7 @@ fun EditorScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    "GEMINI AI ASSISTANT",
+                                    "CLOUD AI ASSISTANT",
                                     color = MaterialTheme.colorScheme.primary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -222,12 +222,12 @@ fun EditorScreen(
                                         strokeWidth = 2.dp
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Gemini is analyzing your code...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground)
+                                    Text("Cloud AI is analyzing your code...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground)
                                 }
                             } else {
                                 Column {
                                     Text(
-                                        text = if (hasDetectedErrors) "Errors detected. Would you like to fix them manually, or let Gemini auto-repair?" else (geminiFeedback ?: ""),
+                                        text = if (hasDetectedErrors) "Errors detected. Would you like to fix them manually, or let Cloud AI auto-repair?" else (geminiFeedback ?: ""),
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             fontFamily = FontFamily.Monospace,
                                             fontSize = 11.sp,
@@ -255,7 +255,7 @@ fun EditorScreen(
                                                 Text("Fix Manually", color = MaterialTheme.colorScheme.onBackground)
                                             }
                                             Button(
-                                                onClick = { viewModel.fixErrorsWithGemini(geminiApiKey) },
+                                                onClick = { viewModel.fixErrorsWithGemini(aiApiKey) },
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = MaterialTheme.colorScheme.primary,
                                                     contentColor = MaterialTheme.colorScheme.onPrimary

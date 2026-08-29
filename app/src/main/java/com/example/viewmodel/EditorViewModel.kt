@@ -79,7 +79,7 @@ class EditorViewModel : ViewModel() {
     fun analyzeCodeWithGemini(apiKey: String) {
         val effectiveKey = apiKey.ifEmpty { BuildConfig.GEMINI_API_KEY }
         if (effectiveKey.isEmpty()) {
-            _geminiFeedback.value = "Gemini API key is not configured in Settings."
+            _geminiFeedback.value = "Cloud AI API key is not configured in Settings."
             return
         }
 
@@ -93,7 +93,7 @@ class EditorViewModel : ViewModel() {
                     contents = listOf(Content(parts = listOf(Part(text = prompt))))
                 )
                 val response = RetrofitClient.geminiService.generateContent(effectiveKey, request)
-                val feedback = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "No feedback provided by Gemini."
+                val feedback = response.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: "No feedback provided by Cloud AI."
                 
                 if (feedback.contains("ERRORS_DETECTED")) {
                     _hasDetectedErrors.value = true
@@ -102,7 +102,7 @@ class EditorViewModel : ViewModel() {
                     _geminiFeedback.value = feedback
                 }
             } catch (e: Exception) {
-                _geminiFeedback.value = "Error analyzing code: ${e.message}"
+                _geminiFeedback.value = "Error analyzing code with Cloud AI: ${e.message}"
             } finally {
                 _isAnalyzing.value = false
             }
@@ -112,7 +112,7 @@ class EditorViewModel : ViewModel() {
     fun fixErrorsWithGemini(apiKey: String) {
         val effectiveKey = apiKey.ifEmpty { BuildConfig.GEMINI_API_KEY }
         if (effectiveKey.isEmpty()) {
-            _geminiFeedback.value = "Gemini API key is not configured in Settings."
+            _geminiFeedback.value = "Cloud AI API key is not configured in Settings."
             return
         }
 
@@ -128,12 +128,12 @@ class EditorViewModel : ViewModel() {
                 
                 if (fixedCode != null) {
                     _codeContent.value = fixedCode.replace("```kotlin", "").replace("```", "").trim()
-                    _geminiFeedback.value = "Code updated with Gemini's fixes."
+                    _geminiFeedback.value = "Code updated with Cloud AI's fixes."
                 } else {
-                    _geminiFeedback.value = "Gemini could not provide a fix."
+                    _geminiFeedback.value = "Cloud AI could not provide a fix."
                 }
             } catch (e: Exception) {
-                _geminiFeedback.value = "Error fixing code: ${e.message}"
+                _geminiFeedback.value = "Error fixing code with Cloud AI: ${e.message}"
             } finally {
                 _isAnalyzing.value = false
             }

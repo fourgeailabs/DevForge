@@ -43,7 +43,7 @@ fun RepoBuildScreen(
 ) {
     val context = LocalContext.current
     val githubPat by settingsViewModel.githubPat.collectAsState()
-    val geminiApiKey by settingsViewModel.geminiApiKey.collectAsState()
+    val aiApiKey by settingsViewModel.aiApiKey.collectAsState()
     val runs by buildViewModel.runs.collectAsState()
     val artifactsMap by buildViewModel.artifactsMap.collectAsState()
     val latestRepoArtifact by buildViewModel.latestRepoArtifact.collectAsState()
@@ -337,7 +337,7 @@ fun RepoBuildScreen(
                         // Trigger New Build Button
                         Button(
                             onClick = {
-                                buildViewModel.triggerBuild(owner, repo, githubPat, customGeminiKey = geminiApiKey)
+                                buildViewModel.triggerBuild(owner, repo, githubPat, customGeminiKey = aiApiKey)
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -370,7 +370,7 @@ fun RepoBuildScreen(
                             // Rerun Latest Build Button
                             OutlinedButton(
                                 onClick = {
-                                    buildViewModel.rerunBuild(owner, repo, githubPat, latestRun.id, customGeminiKey = geminiApiKey)
+                                    buildViewModel.rerunBuild(owner, repo, githubPat, latestRun.id, customGeminiKey = aiApiKey)
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -545,7 +545,7 @@ fun RepoBuildScreen(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "Gemini Estimate: ${state.geminiEstimate}",
+                                            text = "Cloud AI Estimate: ${state.geminiEstimate}",
                                             color = textColor,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Medium
@@ -626,7 +626,7 @@ fun RepoBuildScreen(
                             buildViewModel.downloadAndInstallApk(context, owner, repo, run.id, githubPat)
                         },
                         onRerunRun = {
-                            buildViewModel.rerunBuild(owner, repo, githubPat, run.id, customGeminiKey = geminiApiKey)
+                            buildViewModel.rerunBuild(owner, repo, githubPat, run.id, customGeminiKey = aiApiKey)
                         }
                     )
                 }

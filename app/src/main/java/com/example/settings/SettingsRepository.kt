@@ -14,6 +14,7 @@ class SettingsRepository(private val context: Context) {
     companion object {
         val DARK_MODE_KEY = booleanPreferencesKey("dark_mode")
         val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
+        val SELECTED_AI_PROVIDER_KEY = stringPreferencesKey("selected_ai_provider")
         val GITHUB_PAT_KEY = stringPreferencesKey("github_pat_key")
     }
 
@@ -22,11 +23,23 @@ class SettingsRepository(private val context: Context) {
             preferences[DARK_MODE_KEY] ?: true // Default to true for High Density theme
         }
         
+    val selectedAiProvider: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[SELECTED_AI_PROVIDER_KEY] ?: "Google Gemini"
+        }
+
     val geminiApiKey: Flow<String> = context.dataStore.data
         .map { preferences ->
             preferences[GEMINI_API_KEY] ?: ""
         }
         
+    fun getAiApiKeyForProvider(provider: String): Flow<String> = context.dataStore.data
+        .map { preferences ->
+            val providerKey = stringPreferencesKey("ai_key_${provider.lowercase().replace(" ", "_")}")
+            val key = preferences[providerKey]
+            if (!key.isNullOrEmpty()) key else (preferences[GEMINI_API_KEY] ?: "")
+        }
+
     val githubPat: Flow<String> = context.dataStore.data
         .map { preferences ->
             preferences[GITHUB_PAT_KEY] ?: ""
@@ -38,10 +51,22 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    suspend fun setGeminiApiKey(key: String) {
+    suspend fun setSelectedAiProvider(provider: String) {
         context.dataStore.edit { preferences ->
+            preferences[SELECTED_AI_PROVIDER_KEY] = provider
+        }
+    }
+
+    suspend fun setAiApiKey(provider: String, key: String) {
+        context.dataStore.edit { preferences ->
+            val providerKey = stringPreferencesKey("ai_key_${provider.lowercase().replace(" ", "_")}")
+            preferences[providerKey] = key
             preferences[GEMINI_API_KEY] = key
         }
+    }
+
+    suspend fun setGeminiApiKey(key: String) {
+        setAiApiKey("Google Gemini", key)
     }
 
     suspend fun setGithubPat(token: String) {

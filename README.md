@@ -1,6 +1,6 @@
 # DevForge Pro - Android AI Mobile IDE & APK Builder
 
-**DevForge Pro** is an Android application development studio built using Kotlin and Jetpack Compose. It connects directly with GitHub and Gemini AI to enable repository management, live AI code modifications, and cloud APK build compilation via GitHub Actions.
+**DevForge Pro** is an Android application development studio built using Kotlin and Jetpack Compose. It connects directly with GitHub and Cloud AI services to enable repository management, live AI code modifications, and cloud APK build compilation via GitHub Actions.
 
 ## Creator
 Created by **FourgeAI LABS**  
@@ -10,6 +10,10 @@ GitHub: [https://github.com/fourgeailabs](https://github.com/fourgeailabs)
 GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com/fourgeailabs/DevForge)
 
 ## Recent Updates
+
+### Version 1.14.00
+- **Cloud AI Tool & Service Selector**: Added interactive Cloud AI provider selector in Settings supporting Google Gemini, OpenAI ChatGPT, Anthropic Claude, xAI Grok, DeepSeek, and Custom Cloud AI with per-service API key management.
+- **Generic Cloud AI Rebranding**: Standardized all AI completion predictions, code review tools, and UI indicators under generic Cloud AI branding across the application.
 
 ### Version 1.13.00
 - **Interactive Code Editor & Build Engine**: Integrated multi-stage compilation flow (saving source, AST parsing, kotlinc, R8 DEX transpilation, and signed debug APK packaging) in `EditorScreen`.

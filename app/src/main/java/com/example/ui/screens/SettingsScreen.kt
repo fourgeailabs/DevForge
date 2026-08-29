@@ -246,10 +246,10 @@ fun SettingsScreen(
                 }
             }
 
-            // Gemini API Key (BYOK)
+            // Cloud AI Provider & API Key (BYOK)
             item {
                 Text(
-                    "Gemini AI Key (BYOK)",
+                    "Cloud AI Provider & API Key (BYOK)",
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -261,17 +261,113 @@ fun SettingsScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
-                        val geminiKey by settingsViewModel.geminiApiKey.collectAsState()
+                        val selectedProvider by settingsViewModel.selectedAiProvider.collectAsState()
+                        val aiKey by settingsViewModel.aiApiKey.collectAsState()
+                        var isDropdownExpanded by remember { mutableStateOf(false) }
 
-                        Text("Gemini API Key for AI Completion", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-                        Text("Used for AI build finish predictions and code review tools.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(modifier = Modifier.height(12.dp))
+                        val providers = listOf(
+                            "Google Gemini",
+                            "OpenAI ChatGPT",
+                            "Anthropic Claude",
+                            "xAI Grok",
+                            "DeepSeek",
+                            "Custom Cloud AI"
+                        )
+
+                        Text("Cloud AI Tool & Service Selector", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                        Text("Select your preferred AI tool and enter your API key to power AI build predictions and code edits.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Provider Dropdown Selector
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedCard(
+                                onClick = { isDropdownExpanded = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text("Active AI Service", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(selectedProvider, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        }
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = "Select AI Provider",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            DropdownMenu(
+                                expanded = isDropdownExpanded,
+                                onDismissRequest = { isDropdownExpanded = false },
+                                modifier = Modifier
+                                    .fillMaxWidth(0.85f)
+                                    .background(MaterialTheme.colorScheme.surface)
+                            ) {
+                                providers.forEach { provider ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (provider == selectedProvider) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Check,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                }
+                                                Text(
+                                                    text = provider,
+                                                    fontWeight = if (provider == selectedProvider) FontWeight.Bold else FontWeight.Normal
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            settingsViewModel.setSelectedAiProvider(provider)
+                                            isDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // API Key Input Field
+                        val placeholderText = when (selectedProvider) {
+                            "OpenAI ChatGPT" -> "sk-proj-..."
+                            "Anthropic Claude" -> "sk-ant-api03-..."
+                            "xAI Grok" -> "xai-..."
+                            "DeepSeek" -> "sk-..."
+                            "Custom Cloud AI" -> "https://api.yourcloud.ai or Key"
+                            else -> "AIzaSy..."
+                        }
 
                         OutlinedTextField(
-                            value = geminiKey,
-                            onValueChange = { settingsViewModel.setGeminiApiKey(it) },
-                            label = { Text("Gemini API Key (Optional)") },
-                            placeholder = { Text("AIzaSy...") },
+                            value = aiKey,
+                            onValueChange = { settingsViewModel.setAiApiKey(it, selectedProvider) },
+                            label = { Text("$selectedProvider API Key") },
+                            placeholder = { Text(placeholderText) },
+                            leadingIcon = {
+                                Icon(Icons.Default.VpnKey, contentDescription = null, modifier = Modifier.size(18.dp))
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp)
@@ -402,7 +498,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.13.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.14.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -521,8 +617,16 @@ fun WhatsNewContent() {
 
     val updates = listOf(
         UpdateItem(
-            version = "1.13.00",
+            version = "1.14.00",
             date = "Current Update",
+            notes = listOf(
+                "Cloud AI Provider Selector: Added support for selecting numerous Cloud AI tools (Google Gemini, OpenAI ChatGPT, Anthropic Claude, xAI Grok, DeepSeek, Custom Cloud AI) with per-service API key configuration in Settings.",
+                "Generic Cloud AI Rebranding: Standardized all AI completion predictions, code review tools, and UI indicators under generic Cloud AI branding."
+            )
+        ),
+        UpdateItem(
+            version = "1.13.00",
+            date = "Previous Update",
             notes = listOf(
                 "Fully Functional Interactive Code Editor & APK Compiler: Added live multi-stage compilation engine (saving source, parsing AST, kotlinc compilation, R8 DEX transpilation, and signed debug APK packaging).",
                 "Live Build Terminal Console: Embedded real-time dark terminal window displaying exact compilation logs and diagnostic output.",
@@ -622,7 +726,7 @@ fun WhatsNewContent() {
             notes = listOf(
                 "Pull to Refresh: Swipe down on repository actions to manually re-fetch build logs and artifact status.",
                 "Rerun Build Feature: Direct 1-tap re-run button for the most recent GitHub Actions workflow run.",
-                "Gemini AI Completion Predictions: Real-time AI build finish time predictions using Gemini 3.5 Flash.",
+                "Cloud AI Completion Predictions: Real-time AI build finish time predictions using Cloud AI models.",
                 "Automatic ZIP Artifact Installer: Download and extract repository-level APK artifacts automatically."
             )
         ),
@@ -641,7 +745,7 @@ fun WhatsNewContent() {
             version = "1.00.00",
             date = "Initial Release",
             notes = listOf(
-                "Gemini AI integration for code reviews and auto-edits.",
+                "Cloud AI integration for code reviews and auto-edits.",
                 "Personal Access Token & BYOK Key storage using Android DataStore.",
                 "Dark & Light Material 3 theme styling."
             )
