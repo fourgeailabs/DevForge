@@ -402,7 +402,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.10.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.11.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -517,12 +517,19 @@ fun SettingsScreen(
 
 @Composable
 fun WhatsNewContent() {
-    var expandedVersion by remember { mutableStateOf<String?>("1.10.00") }
+    var expandedVersion by remember { mutableStateOf<String?>("1.11.00") }
 
     val updates = listOf(
         UpdateItem(
-            version = "1.10.00",
+            version = "1.11.00",
             date = "Current Update",
+            notes = listOf(
+                "Banner Cleanup: Completely removed the 'Automate AI Studio to Mobile APKs' helper card from the app layout."
+            )
+        ),
+        UpdateItem(
+            version = "1.10.00",
+            date = "Previous Update",
             notes = listOf(
                 "UI Streamlining: Removed the 'Paste Public Creator / Repo Link' button from empty/error dashboard views to deliver a clean repository list interface."
             )

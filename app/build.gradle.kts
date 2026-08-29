@@ -18,8 +18,8 @@ android {
     applicationId = "com.fourgeailabs.devforge"
     minSdk = 24
     targetSdk = 36
-    versionCode = 11
-    versionName = "1.10.00"
+    versionCode = 12
+    versionName = "1.11.00"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

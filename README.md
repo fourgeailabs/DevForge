@@ -11,6 +11,9 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.11.00
+- **Banner Cleanup**: Completely removed the "Automate AI Studio to Mobile APKs" banner card from the layout.
+
 ### Version 1.10.00
 - **UI Streamlining**: Removed the "Paste Public Creator / Repo Link" button from empty and error state dashboard views to provide a clean repository list layout.
 
