@@ -94,6 +94,16 @@ fun RepoBuildScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/$owner/$repo"))
+                        context.startActivity(intent)
+                    }) {
+                        Icon(
+                            Icons.Default.OpenInBrowser,
+                            contentDescription = "View on GitHub",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                     IconButton(onClick = onNavigateToEditor) {
                         Icon(
                             Icons.Default.Code,
@@ -186,28 +196,52 @@ fun RepoBuildScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            Button(
-                                onClick = {
-                                    buildViewModel.downloadDirectApkFile(
-                                        context = context,
-                                        downloadUrl = directApk.apkDownloadUrl,
-                                        apiAssetUrl = directApk.apiAssetUrl,
-                                        fileName = directApk.apkAssetName,
-                                        token = githubPat
-                                    )
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.GetApp, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Download Creator's Pre-Built APK", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Button(
+                                    onClick = {
+                                        buildViewModel.downloadDirectApkFile(
+                                            context = context,
+                                            downloadUrl = directApk.apkDownloadUrl,
+                                            apiAssetUrl = directApk.apiAssetUrl,
+                                            fileName = directApk.apkAssetName,
+                                            token = githubPat
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                ) {
+                                    Icon(Icons.Default.InstallDesktop, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Install", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
+                                
+                                Button(
+                                    onClick = {
+                                        buildViewModel.downloadFileToPublicDownloads(
+                                            context = context,
+                                            downloadUrl = directApk.apkDownloadUrl,
+                                            apiAssetUrl = directApk.apiAssetUrl,
+                                            fileName = directApk.apkAssetName,
+                                            token = githubPat
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondary,
+                                        contentColor = MaterialTheme.colorScheme.onSecondary
+                                    )
+                                ) {
+                                    Icon(Icons.Default.Download, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Download", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
                             }
                         }
                     }
