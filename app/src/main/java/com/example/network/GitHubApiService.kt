@@ -127,6 +127,7 @@ data class GitHubRelease(
     val tag_name: String,
     val name: String? = null,
     val body: String? = null,
+    val html_url: String? = null,
     val draft: Boolean = false,
     val prerelease: Boolean = false,
     val created_at: String? = null,

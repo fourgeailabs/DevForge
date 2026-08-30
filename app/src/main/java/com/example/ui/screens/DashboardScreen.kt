@@ -29,6 +29,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.example.network.GitHubRepo
 import com.example.network.GitHubWorkflowRun
 import com.example.settings.SettingsViewModel
+import com.example.ui.components.AppUpdateDialog
+import com.example.viewmodel.AppUpdateViewModel
 import com.example.viewmodel.GitHubViewModel
 import com.example.viewmodel.SearchTargetMode
 import kotlinx.coroutines.delay
@@ -43,9 +45,12 @@ fun DashboardScreen(
     onNavigateToRepoBuild: (String, String) -> Unit,
     onNavigateToSettings: () -> Unit,
     settingsViewModel: SettingsViewModel = viewModel(),
-    gitHubViewModel: GitHubViewModel = viewModel()
+    gitHubViewModel: GitHubViewModel = viewModel(),
+    appUpdateViewModel: AppUpdateViewModel = viewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val githubPat by settingsViewModel.githubPat.collectAsState()
+    val updateState by appUpdateViewModel.updateState.collectAsState()
     val repos by gitHubViewModel.repos.collectAsState()
     val activeRuns by gitHubViewModel.activeWorkflowRuns.collectAsState()
     val isLoading by gitHubViewModel.isLoading.collectAsState()
@@ -58,6 +63,10 @@ fun DashboardScreen(
     var publicUrlInput by remember { mutableStateOf("") }
 
     var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(Unit) {
+        appUpdateViewModel.checkForUpdates(githubPat, forceUserTrigger = false)
+    }
 
     fun extractRawQueryAndMode(input: String, currentMode: SearchTargetMode): Pair<SearchTargetMode, String> {
         val trimmed = input.trim()
@@ -369,8 +378,8 @@ fun DashboardScreen(
                     },
                     placeholder = {
                         Text(
-                            if (activeSearchMode == SearchTargetMode.DEV) "Dev: fourgeai labs"
-                            else "Repo: DevForge"
+                            if (activeSearchMode == SearchTargetMode.DEV) "Dev: e.g. fourgeailabs"
+                            else "Repo: e.g. DevForge"
                         )
                     },
                     leadingIcon = {
@@ -568,6 +577,19 @@ fun DashboardScreen(
                 }
             )
         }
+
+        AppUpdateDialog(
+            updateState = updateState,
+            onInstallNow = { info ->
+                appUpdateViewModel.installUpdateNow(context, info, githubPat)
+            },
+            onSkipVersion = { versionTag ->
+                appUpdateViewModel.skipVersion(versionTag)
+            },
+            onDismiss = {
+                appUpdateViewModel.dismissState()
+            }
+        )
     }
 }
 

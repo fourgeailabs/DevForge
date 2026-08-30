@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.auth.AuthViewModel
 import com.example.settings.SettingsViewModel
+import com.example.ui.components.AppUpdateDialog
+import com.example.viewmodel.AppUpdateViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,11 +34,13 @@ fun SettingsScreen(
     authViewModel: AuthViewModel,
     settingsViewModel: SettingsViewModel,
     onNavigateBack: () -> Unit,
-    onSignOut: () -> Unit = {}
+    onSignOut: () -> Unit = {},
+    appUpdateViewModel: AppUpdateViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 ) {
     val context = LocalContext.current
     val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
     val user by authViewModel.userState.collectAsState()
+    val updateState by appUpdateViewModel.updateState.collectAsState()
 
     var showWhatsNewSheet by remember { mutableStateOf(false) }
     var showPatHelpDialog by remember { mutableStateOf(false) }
@@ -498,7 +502,23 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.17.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Version: 1.18.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            OutlinedButton(
+                                onClick = { appUpdateViewModel.checkForUpdates(savedGithubPat, forceUserTrigger = true) },
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                modifier = Modifier.height(34.dp)
+                            ) {
+                                Icon(Icons.Default.SystemUpdate, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Check for Updates", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -608,6 +628,19 @@ fun SettingsScreen(
                 }
             )
         }
+
+        AppUpdateDialog(
+            updateState = updateState,
+            onInstallNow = { info ->
+                appUpdateViewModel.installUpdateNow(context, info, savedGithubPat)
+            },
+            onSkipVersion = { versionTag ->
+                appUpdateViewModel.skipVersion(versionTag)
+            },
+            onDismiss = {
+                appUpdateViewModel.dismissState()
+            }
+        )
     }
 }
 
@@ -617,8 +650,25 @@ fun WhatsNewContent() {
 
     val updates = listOf(
         UpdateItem(
-            version = "1.17.00",
+            version = "1.19.00",
             date = "Current Update",
+            notes = listOf(
+                "Unified Update Engine (Releases + Actions Tab): Integrated the GitHub Actions build pipeline with the in-app update engine. The application now scans both official GitHub releases and successfully completed workflow runs on the Actions tab.",
+                "Automatic ZIP Artifact Extract & Install: Downloads completed Actions run artifacts in standard .zip format, extracts the internal signed APK package directly in-app, verifies packages, and prompts installation.",
+                "Search Placeholder Polishing: Standardized search bar examples and placeholder guides (like 'fourgeailabs' without spaces) to improve usability and eliminate input confusion."
+            )
+        ),
+        UpdateItem(
+            version = "1.18.00",
+            date = "Previous Update",
+            notes = listOf(
+                "GitHub Self-Update Engine: Automatically scans the application's GitHub repository (fourgeailabs/devforge) for new release tags and APK assets on startup and via Settings.",
+                "In-App Update Alert & Version Skipping: Displays an interactive update prompt alerting the user when a new version is available with direct 'Install Now', 'Skip Version' (persisting choice across sessions), and 'View on GitHub' options."
+            )
+        ),
+        UpdateItem(
+            version = "1.17.00",
+            date = "Previous Update",
             notes = listOf(
                 "Multi-Platform Release Downloads: When searching or viewing any GitHub repository or developer, all downloadable release assets for Windows (.exe, .msi), macOS (.dmg, .pkg), Linux (.AppImage, .deb, .rpm), iOS (.ipa), Android (.apk, .aab), and archives (.zip) are automatically detected.",
                 "Direct Android Downloads Directory Integration: Clicking any downloadable asset streams the file directly into your device's primary public Downloads folder (/sdcard/Download/) and registers it with Android's DownloadManager."
@@ -628,7 +678,7 @@ fun WhatsNewContent() {
             version = "1.16.00",
             date = "Previous Update",
             notes = listOf(
-                "Developer & Repository Search Options: Added interactive Dev: and Repo: mode selection options to the search bar. Easily toggle search target to look specifically for developers/creators (e.g., 'Dev: fourgeai labs') or repositories by name (e.g., 'Repo: DevForge') on GitHub."
+                "Developer & Repository Search Options: Added interactive Dev: and Repo: mode selection options to the search bar. Easily toggle search target to look specifically for developers/creators (e.g., 'Dev: fourgeailabs') or repositories by name (e.g., 'Repo: DevForge') on GitHub."
             )
         ),
         UpdateItem(

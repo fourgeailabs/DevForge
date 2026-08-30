@@ -11,12 +11,21 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.19.00
+- **Unified Actions + Releases Update Engine**: Expanded the in-app self-update engine to look for completed builds on the GitHub Actions tab in addition to official Release tags. This enables immediate developer testing of successful workflow-compiled binaries.
+- **In-App Artifact Extraction & Package Verification**: Implemented in-app unzip streaming for Actions build artifacts. The engine extracts the signed APK file from the artifact `.zip` file on a background IO thread, validates package integrity, and triggers installation.
+- **Polished Search Placeholders**: Corrected and standardized all search bar examples and placeholder guides (e.g., using `fourgeailabs` without whitespace) to clarify input syntax and prevent search execution issues.
+
+### Version 1.18.00
+- **Automatic GitHub Self-Update Engine**: Dynamically queries the application's GitHub repository (`fourgeailabs/DevForge`) for new releases on startup and via a dedicated "Check for Updates" button in Settings.
+- **Interactive In-App Update Alert & Version Skipping**: Prompts users when a new release tag is detected with options to "Install Now" (streams APK to Downloads folder and launches Android installer), "Skip Version" (persisted across sessions via DataStore), and "View Update on GitHub".
+
 ### Version 1.17.00
 - **Multi-Platform Download Support**: Automatically detects downloadable content across all releases when viewing any GitHub repository or developer. Supports Windows (`.exe`, `.msi`), macOS (`.dmg`, `.pkg`), Linux (`.AppImage`, `.deb`, `.rpm`), iOS (`.ipa`), Android (`.apk`, `.aab`), and cross-platform archives (`.zip`).
 - **Device Downloads Folder Integration**: All downloaded files stream directly to the Android device's primary public Downloads folder (`/sdcard/Download/`) and are automatically registered with Android's system `DownloadManager`.
 
 ### Version 1.16.00
-- **Developer & Repository Search Options**: Integrated interactive `Dev:` and `Repo:` search target selection options into the search bar. Allows toggling search mode between developers/creators (e.g. `Dev: fourgeai labs`) and repository names (e.g. `Repo: DevForge`) with live GitHub API search execution.
+- **Developer & Repository Search Options**: Integrated interactive `Dev:` and `Repo:` search target selection options into the search bar. Allows toggling search mode between developers/creators (e.g. `Dev: fourgeailabs`) and repository names (e.g. `Repo: DevForge`) with live GitHub API search execution.
 
 ### Version 1.15.00
 - **Most Recently Modified Repository Ordering**: Repositories on the repository display screen are sorted in order of last modification timestamp (newest / most recently modified at the top, oldest at the bottom).

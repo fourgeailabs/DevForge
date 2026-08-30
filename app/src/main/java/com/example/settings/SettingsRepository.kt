@@ -16,6 +16,7 @@ class SettingsRepository(private val context: Context) {
         val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
         val SELECTED_AI_PROVIDER_KEY = stringPreferencesKey("selected_ai_provider")
         val GITHUB_PAT_KEY = stringPreferencesKey("github_pat_key")
+        val SKIPPED_UPDATE_VERSION_KEY = stringPreferencesKey("skipped_update_version")
     }
 
     val isDarkMode: Flow<Boolean> = context.dataStore.data
@@ -45,6 +46,11 @@ class SettingsRepository(private val context: Context) {
             preferences[GITHUB_PAT_KEY] ?: ""
         }
 
+    val skippedUpdateVersion: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[SKIPPED_UPDATE_VERSION_KEY] ?: ""
+        }
+
     suspend fun setDarkMode(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[DARK_MODE_KEY] = enabled
@@ -72,6 +78,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun setGithubPat(token: String) {
         context.dataStore.edit { preferences ->
             preferences[GITHUB_PAT_KEY] = token
+        }
+    }
+
+    suspend fun setSkippedUpdateVersion(version: String) {
+        context.dataStore.edit { preferences ->
+            preferences[SKIPPED_UPDATE_VERSION_KEY] = version
         }
     }
 }
