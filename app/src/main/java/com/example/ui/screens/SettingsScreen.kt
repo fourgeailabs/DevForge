@@ -498,7 +498,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.14.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.16.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -617,8 +617,22 @@ fun WhatsNewContent() {
 
     val updates = listOf(
         UpdateItem(
-            version = "1.14.00",
+            version = "1.16.00",
             date = "Current Update",
+            notes = listOf(
+                "Developer & Repository Search Options: Added interactive Dev: and Repo: mode selection options to the search bar. Easily toggle search target to look specifically for developers/creators (e.g., 'Dev: fourgeai labs') or repositories by name (e.g., 'Repo: DevForge') on GitHub."
+            )
+        ),
+        UpdateItem(
+            version = "1.15.00",
+            date = "Previous Update",
+            notes = listOf(
+                "Most Recently Modified Repository Ordering: Configured the repository display screen to present repositories in chronological order of last modification (newest/most recently modified at the top, oldest at the bottom)."
+            )
+        ),
+        UpdateItem(
+            version = "1.14.00",
+            date = "Previous Update",
             notes = listOf(
                 "Cloud AI Provider Selector: Added support for selecting numerous Cloud AI tools (Google Gemini, OpenAI ChatGPT, Anthropic Claude, xAI Grok, DeepSeek, Custom Cloud AI) with per-service API key configuration in Settings.",
                 "Generic Cloud AI Rebranding: Standardized all AI completion predictions, code review tools, and UI indicators under generic Cloud AI branding."

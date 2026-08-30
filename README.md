@@ -11,6 +11,12 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.16.00
+- **Developer & Repository Search Options**: Integrated interactive `Dev:` and `Repo:` search target selection options into the search bar. Allows toggling search mode between developers/creators (e.g. `Dev: fourgeai labs`) and repository names (e.g. `Repo: DevForge`) with live GitHub API search execution.
+
+### Version 1.15.00
+- **Most Recently Modified Repository Ordering**: Repositories on the repository display screen are sorted in order of last modification timestamp (newest / most recently modified at the top, oldest at the bottom).
+
 ### Version 1.14.00
 - **Cloud AI Tool & Service Selector**: Added interactive Cloud AI provider selector in Settings supporting Google Gemini, OpenAI ChatGPT, Anthropic Claude, xAI Grok, DeepSeek, and Custom Cloud AI with per-service API key management.
 - **Generic Cloud AI Rebranding**: Standardized all AI completion predictions, code review tools, and UI indicators under generic Cloud AI branding across the application.

@@ -30,6 +30,7 @@ data class GitHubRepo(
     val language: String? = null,
     val default_branch: String = "main",
     val updated_at: String? = null,
+    val pushed_at: String? = null,
     val owner: GitHubOwner? = null
 )
 
@@ -138,6 +139,13 @@ data class WorkflowDispatchBody(
     val ref: String = "main"
 )
 
+@Serializable
+data class GitHubSearchRepoResponse(
+    val total_count: Int = 0,
+    val incomplete_results: Boolean = false,
+    val items: List<GitHubRepo> = emptyList()
+)
+
 interface GitHubApiService {
     @GET("user")
     suspend fun getUserProfile(
@@ -166,6 +174,14 @@ interface GitHubApiService {
         @Query("sort") sort: String = "updated",
         @Query("per_page") perPage: Int = 100
     ): List<GitHubRepo>
+
+    @GET("search/repositories")
+    suspend fun searchRepositories(
+        @Header("Authorization") token: String? = null,
+        @Query("q") query: String,
+        @Query("sort") sort: String = "updated",
+        @Query("per_page") perPage: Int = 100
+    ): GitHubSearchRepoResponse
 
     @GET("repos/{owner}/{repo}")
     suspend fun getSingleRepo(

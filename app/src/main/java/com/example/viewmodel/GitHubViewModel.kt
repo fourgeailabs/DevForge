@@ -10,6 +10,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class SearchTargetMode(val prefix: String, val label: String) {
+    DEV("Dev:", "Developer"),
+    REPO("Repo:", "Repository")
+}
+
 class GitHubViewModel : ViewModel() {
     private val _repos = MutableStateFlow<List<GitHubRepo>>(emptyList())
     val repos: StateFlow<List<GitHubRepo>> = _repos.asStateFlow()
@@ -26,6 +31,16 @@ class GitHubViewModel : ViewModel() {
     private val _activeOwnerFilter = MutableStateFlow<String?>(null)
     val activeOwnerFilter: StateFlow<String?> = _activeOwnerFilter.asStateFlow()
 
+    private fun sortReposByMostRecentlyModified(list: List<GitHubRepo>): List<GitHubRepo> {
+        return list.sortedWith(
+            compareByDescending<GitHubRepo> { repo ->
+                repo.pushed_at ?: repo.updated_at ?: ""
+            }.thenByDescending { repo ->
+                repo.id
+            }
+        )
+    }
+
     fun fetchRepos(pat: String) {
         if (pat.isEmpty()) {
             _error.value = "GitHub PAT not configured."
@@ -39,7 +54,7 @@ class GitHubViewModel : ViewModel() {
                 // Ensure Bearer prefix is used
                 val authHeader = if (pat.startsWith("Bearer ")) pat else "Bearer $pat"
                 val fetchedRepos = RetrofitClient.githubService.getUserRepos(authHeader)
-                _repos.value = fetchedRepos
+                _repos.value = sortReposByMostRecentlyModified(fetchedRepos)
                 checkActiveWorkflowRuns(pat)
             } catch (e: Exception) {
                 _error.value = "Failed to fetch repos: ${e.message}"
@@ -88,14 +103,14 @@ class GitHubViewModel : ViewModel() {
                     try {
                         val userRepos = RetrofitClient.githubService.getPublicUserRepos(authHeader, username)
                         if (userRepos.isNotEmpty()) {
-                            _repos.value = userRepos
+                            _repos.value = sortReposByMostRecentlyModified(userRepos)
                         } else {
                             val orgRepos = RetrofitClient.githubService.getPublicOrgRepos(authHeader, username)
-                            _repos.value = orgRepos
+                            _repos.value = sortReposByMostRecentlyModified(orgRepos)
                         }
                     } catch (_: Exception) {
                         val orgRepos = RetrofitClient.githubService.getPublicOrgRepos(authHeader, username)
-                        _repos.value = orgRepos
+                        _repos.value = sortReposByMostRecentlyModified(orgRepos)
                     }
                 }
                 checkActiveWorkflowRuns(pat)
@@ -153,6 +168,85 @@ class GitHubViewModel : ViewModel() {
             fetchRepos(pat)
         } else {
             _repos.value = emptyList()
+        }
+    }
+
+    /**
+     * Performs a GitHub API search specifically targetting either Developers/Creators or Repository Names.
+     */
+    fun performGitHubSearch(mode: SearchTargetMode, searchQuery: String, pat: String = "") {
+        val cleanQuery = searchQuery.trim()
+            .removePrefix("Dev:")
+            .removePrefix("dev:")
+            .removePrefix("Repo:")
+            .removePrefix("repo:")
+            .trim()
+
+        if (cleanQuery.isEmpty()) {
+            if (pat.isNotEmpty() && _activeOwnerFilter.value != null) {
+                clearOwnerFilter(pat)
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            val authHeader = if (pat.isNotBlank()) (if (pat.startsWith("Bearer ")) pat else "Bearer $pat") else null
+
+            try {
+                if (mode == SearchTargetMode.DEV) {
+                    _activeOwnerFilter.value = "Dev: $cleanQuery"
+                    val cleanUsername = cleanQuery.replace(" ", "").lowercase()
+
+                    var resultList: List<GitHubRepo> = emptyList()
+
+                    // First attempt: direct user or org repos
+                    try {
+                        val userRepos = RetrofitClient.githubService.getPublicUserRepos(authHeader, cleanUsername)
+                        if (userRepos.isNotEmpty()) {
+                            resultList = userRepos
+                        } else {
+                            val orgRepos = RetrofitClient.githubService.getPublicOrgRepos(authHeader, cleanUsername)
+                            resultList = orgRepos
+                        }
+                    } catch (_: Exception) {
+                        try {
+                            val orgRepos = RetrofitClient.githubService.getPublicOrgRepos(authHeader, cleanUsername)
+                            resultList = orgRepos
+                        } catch (_: Exception) {
+                            // Fallback to GitHub Search API for user
+                            val searchResp = RetrofitClient.githubService.searchRepositories(authHeader, "user:$cleanUsername")
+                            resultList = searchResp.items
+                        }
+                    }
+
+                    if (resultList.isEmpty()) {
+                        // General query fallback
+                        val fallbackSearch = RetrofitClient.githubService.searchRepositories(authHeader, cleanQuery)
+                        resultList = fallbackSearch.items
+                    }
+
+                    if (resultList.isEmpty()) {
+                        _error.value = "No public GitHub repositories found for developer '$cleanQuery'."
+                    }
+
+                    _repos.value = sortReposByMostRecentlyModified(resultList)
+                } else {
+                    // Search by Repository Name
+                    _activeOwnerFilter.value = "Repo: $cleanQuery"
+                    val searchResp = RetrofitClient.githubService.searchRepositories(authHeader, cleanQuery)
+                    if (searchResp.items.isEmpty()) {
+                        _error.value = "No public GitHub repositories found matching repository '$cleanQuery'."
+                    }
+                    _repos.value = sortReposByMostRecentlyModified(searchResp.items)
+                }
+                checkActiveWorkflowRuns(pat)
+            } catch (e: Exception) {
+                _error.value = "GitHub search failed for '$cleanQuery': ${e.localizedMessage ?: e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 }

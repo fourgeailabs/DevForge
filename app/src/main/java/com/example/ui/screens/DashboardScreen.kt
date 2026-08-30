@@ -23,10 +23,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import com.example.network.GitHubRepo
 import com.example.network.GitHubWorkflowRun
 import com.example.settings.SettingsViewModel
 import com.example.viewmodel.GitHubViewModel
+import com.example.viewmodel.SearchTargetMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.text.SimpleDateFormat
@@ -49,10 +53,28 @@ fun DashboardScreen(
     val activeOwnerFilter by gitHubViewModel.activeOwnerFilter.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
+    var searchTargetMode by remember { mutableStateOf(SearchTargetMode.REPO) }
     var showPublicLinkDialog by remember { mutableStateOf(false) }
     var publicUrlInput by remember { mutableStateOf("") }
 
     var currentTimeMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    fun extractRawQueryAndMode(input: String, currentMode: SearchTargetMode): Pair<SearchTargetMode, String> {
+        val trimmed = input.trim()
+        return when {
+            trimmed.startsWith("Dev:", ignoreCase = true) -> {
+                SearchTargetMode.DEV to trimmed.substring(4).trimStart()
+            }
+            trimmed.startsWith("Repo:", ignoreCase = true) -> {
+                SearchTargetMode.REPO to trimmed.substring(5).trimStart()
+            }
+            else -> {
+                currentMode to trimmed
+            }
+        }
+    }
+
+    val (activeSearchMode, rawSearchQuery) = extractRawQueryAndMode(searchQuery, searchTargetMode)
 
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -76,13 +98,29 @@ fun DashboardScreen(
         }
     }
 
-    val filteredRepos = remember(repos, searchQuery) {
-        if (searchQuery.isBlank()) repos
-        else repos.filter {
-            it.name.contains(searchQuery, ignoreCase = true) ||
-                    (it.description?.contains(searchQuery, ignoreCase = true) == true) ||
-                    it.full_name.contains(searchQuery, ignoreCase = true)
+    val filteredRepos = remember(repos, searchQuery, activeSearchMode, rawSearchQuery) {
+        val baseList = if (rawSearchQuery.isBlank()) {
+            repos
+        } else {
+            repos.filter { repo ->
+                if (activeSearchMode == SearchTargetMode.DEV) {
+                    val ownerName = repo.owner?.login ?: ""
+                    ownerName.contains(rawSearchQuery, ignoreCase = true) ||
+                            repo.full_name.contains(rawSearchQuery, ignoreCase = true)
+                } else {
+                    repo.name.contains(rawSearchQuery, ignoreCase = true) ||
+                            (repo.description?.contains(rawSearchQuery, ignoreCase = true) == true) ||
+                            repo.full_name.contains(rawSearchQuery, ignoreCase = true)
+                }
+            }
         }
+        baseList.sortedWith(
+            compareByDescending<GitHubRepo> { repo ->
+                repo.pushed_at ?: repo.updated_at ?: ""
+            }.thenByDescending { repo ->
+                repo.id
+            }
+        )
     }
 
     Scaffold(
@@ -249,29 +287,168 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // Filter Search Bar
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            // GitHub Target Mode Selector & Search Field
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
             ) {
+                // Selector options (Dev: vs Repo:)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp)
+                ) {
+                    Text(
+                        text = "Search For:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Dev: Selection Option
+                    FilterChip(
+                        selected = activeSearchMode == SearchTargetMode.DEV,
+                        onClick = {
+                            searchTargetMode = SearchTargetMode.DEV
+                            searchQuery = if (rawSearchQuery.isEmpty()) "Dev: " else "Dev: $rawSearchQuery"
+                        },
+                        label = {
+                            Text("Dev:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = "Search Developer",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    // Repo: Selection Option
+                    FilterChip(
+                        selected = activeSearchMode == SearchTargetMode.REPO,
+                        onClick = {
+                            searchTargetMode = SearchTargetMode.REPO
+                            searchQuery = if (rawSearchQuery.isEmpty()) "Repo: " else "Repo: $rawSearchQuery"
+                        },
+                        label = {
+                            Text("Repo:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Folder,
+                                contentDescription = "Search Repository",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+
+                // Search Input Field
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = { Text("Filter loaded repositories...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    onValueChange = { newValue ->
+                        searchQuery = newValue
+                        val (detectedMode, _) = extractRawQueryAndMode(newValue, searchTargetMode)
+                        searchTargetMode = detectedMode
+                    },
+                    placeholder = {
+                        Text(
+                            if (activeSearchMode == SearchTargetMode.DEV) "Dev: fourgeai labs"
+                            else "Repo: DevForge"
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            if (activeSearchMode == SearchTargetMode.DEV) Icons.Default.Person else Icons.Default.Folder,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
                     trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear search")
+                                }
+                            }
+                            if (rawSearchQuery.isNotBlank()) {
+                                IconButton(
+                                    onClick = {
+                                        gitHubViewModel.performGitHubSearch(activeSearchMode, rawSearchQuery, githubPat)
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.ArrowForward,
+                                        contentDescription = "Search GitHub",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = {
+                            if (rawSearchQuery.isNotBlank()) {
+                                gitHubViewModel.performGitHubSearch(activeSearchMode, rawSearchQuery, githubPat)
+                            }
+                        }
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true
                 )
+
+                // Quick Action Trigger Banner for Live GitHub Search
+                if (rawSearchQuery.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                gitHubViewModel.performGitHubSearch(activeSearchMode, rawSearchQuery, githubPat)
+                            }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (activeSearchMode == SearchTargetMode.DEV) "Search GitHub developers for '$rawSearchQuery' ->"
+                                else "Search GitHub repositories for '$rawSearchQuery' ->",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
