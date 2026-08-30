@@ -29,6 +29,7 @@ import com.example.network.GitHubArtifact
 import com.example.network.GitHubWorkflowRun
 import com.example.settings.SettingsViewModel
 import com.example.viewmodel.BuildStatusState
+import com.example.viewmodel.MultiPlatformReleaseAsset
 import com.example.viewmodel.RepoBuildViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,6 +49,7 @@ fun RepoBuildScreen(
     val artifactsMap by buildViewModel.artifactsMap.collectAsState()
     val latestRepoArtifact by buildViewModel.latestRepoArtifact.collectAsState()
     val latestDirectApk by buildViewModel.latestDirectApk.collectAsState()
+    val multiPlatformReleaseAssets by buildViewModel.multiPlatformReleaseAssets.collectAsState()
     val statusState by buildViewModel.statusState.collectAsState()
     val isLoading by buildViewModel.isLoading.collectAsState()
 
@@ -209,6 +211,24 @@ fun RepoBuildScreen(
                             }
                         }
                     }
+                }
+            }
+
+            // Multi-Platform Release Downloads Card (Windows, Mac, Linux, iOS, Android)
+            if (multiPlatformReleaseAssets.isNotEmpty()) {
+                item {
+                    MultiPlatformDownloadsCard(
+                        assets = multiPlatformReleaseAssets,
+                        onDownloadAsset = { asset ->
+                            buildViewModel.downloadFileToPublicDownloads(
+                                context = context,
+                                downloadUrl = asset.browserDownloadUrl,
+                                apiAssetUrl = asset.apiAssetUrl,
+                                fileName = asset.fileName,
+                                token = githubPat
+                            )
+                        }
+                    )
                 }
             }
 
@@ -751,6 +771,127 @@ fun WorkflowRunCard(
                         Icon(Icons.Default.GetApp, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Download APK", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MultiPlatformDownloadsCard(
+    assets: List<MultiPlatformReleaseAsset>,
+    onDownloadAsset: (MultiPlatformReleaseAsset) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.CloudDownload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Release Downloads (All Platforms)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Windows • Mac • Linux • iOS • Android • Archives",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                assets.take(15).forEach { asset ->
+                    Surface(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            Text(
+                                text = asset.platform.iconBadge,
+                                fontSize = 20.sp,
+                                modifier = Modifier.padding(end = 10.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = asset.platform.displayName,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = asset.tagName,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = asset.fileName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${asset.sizeBytes / 1024} KB",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { onDownloadAsset(asset) },
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(
+                                    Icons.Default.Download,
+                                    contentDescription = "Download to device Downloads folder",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

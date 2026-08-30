@@ -11,6 +11,10 @@ GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com
 
 ## Recent Updates
 
+### Version 1.17.00
+- **Multi-Platform Download Support**: Automatically detects downloadable content across all releases when viewing any GitHub repository or developer. Supports Windows (`.exe`, `.msi`), macOS (`.dmg`, `.pkg`), Linux (`.AppImage`, `.deb`, `.rpm`), iOS (`.ipa`), Android (`.apk`, `.aab`), and cross-platform archives (`.zip`).
+- **Device Downloads Folder Integration**: All downloaded files stream directly to the Android device's primary public Downloads folder (`/sdcard/Download/`) and are automatically registered with Android's system `DownloadManager`.
+
 ### Version 1.16.00
 - **Developer & Repository Search Options**: Integrated interactive `Dev:` and `Repo:` search target selection options into the search bar. Allows toggling search mode between developers/creators (e.g. `Dev: fourgeai labs`) and repository names (e.g. `Repo: DevForge`) with live GitHub API search execution.
 

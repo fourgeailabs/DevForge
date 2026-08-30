@@ -33,6 +33,39 @@ data class DirectApkReleaseInfo(
     val publishedAt: String?
 )
 
+enum class TargetPlatform(val displayName: String, val iconBadge: String) {
+    WINDOWS("Windows", "🪟"),
+    MAC("macOS", "🍏"),
+    LINUX("Linux", "🐧"),
+    IOS("iOS", "📱"),
+    ANDROID("Android", "🤖"),
+    ARCHIVE("Cross-Platform", "📦")
+}
+
+data class MultiPlatformReleaseAsset(
+    val id: Long,
+    val fileName: String,
+    val platform: TargetPlatform,
+    val browserDownloadUrl: String,
+    val apiAssetUrl: String? = null,
+    val sizeBytes: Long,
+    val releaseName: String,
+    val tagName: String,
+    val publishedAt: String?
+)
+
+fun detectTargetPlatform(fileName: String): TargetPlatform {
+    val lower = fileName.lowercase()
+    return when {
+        lower.endsWith(".exe") || lower.endsWith(".msi") || lower.endsWith(".bat") || lower.endsWith(".cmd") || lower.contains("windows") || lower.contains("win64") || lower.contains("win32") || lower.contains("win-") -> TargetPlatform.WINDOWS
+        lower.endsWith(".dmg") || lower.endsWith(".pkg") || lower.contains("mac") || lower.contains("darwin") || lower.contains("osx") -> TargetPlatform.MAC
+        lower.endsWith(".appimage") || lower.endsWith(".deb") || lower.endsWith(".rpm") || lower.contains("linux") || lower.contains("ubuntu") -> TargetPlatform.LINUX
+        lower.endsWith(".ipa") || lower.contains("ios") -> TargetPlatform.IOS
+        lower.endsWith(".apk") || lower.endsWith(".aab") || lower.contains("android") -> TargetPlatform.ANDROID
+        else -> TargetPlatform.ARCHIVE
+    }
+}
+
 sealed class BuildStatusState {
     object Idle : BuildStatusState()
     object Triggering : BuildStatusState()
@@ -59,6 +92,9 @@ class RepoBuildViewModel : ViewModel() {
 
     private val _latestDirectApk = MutableStateFlow<DirectApkReleaseInfo?>(null)
     val latestDirectApk: StateFlow<DirectApkReleaseInfo?> = _latestDirectApk.asStateFlow()
+
+    private val _multiPlatformReleaseAssets = MutableStateFlow<List<MultiPlatformReleaseAsset>>(emptyList())
+    val multiPlatformReleaseAssets: StateFlow<List<MultiPlatformReleaseAsset>> = _multiPlatformReleaseAssets.asStateFlow()
 
     private val _statusState = MutableStateFlow<BuildStatusState>(BuildStatusState.Idle)
     val statusState: StateFlow<BuildStatusState> = _statusState.asStateFlow()
@@ -99,25 +135,43 @@ class RepoBuildViewModel : ViewModel() {
                     _latestRepoArtifact.value = latest
                 } catch (_: Exception) {}
 
-                // PRIORITIZE CREATOR'S PRE-BUILT UNZIPPED APK RELEASE ASSETS
+                // FETCH MULTI-PLATFORM RELEASE ASSETS (Windows, Mac, Linux, iOS, Android)
                 try {
                     val releases = RetrofitClient.githubService.getReleases(authHeader, owner, repo)
+                    val assetList = mutableListOf<MultiPlatformReleaseAsset>()
                     var foundDirectApk: DirectApkReleaseInfo? = null
+
                     for (release in releases) {
-                        val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }
-                        if (apkAsset != null) {
-                            foundDirectApk = DirectApkReleaseInfo(
-                                releaseName = release.name ?: release.tag_name,
-                                tagName = release.tag_name,
-                                apkAssetName = apkAsset.name,
-                                apkDownloadUrl = apkAsset.browser_download_url,
-                                apiAssetUrl = apkAsset.url,
-                                sizeBytes = apkAsset.size,
-                                publishedAt = release.published_at ?: release.created_at
+                        val relTitle = release.name ?: release.tag_name
+                        for (asset in release.assets) {
+                            val platform = detectTargetPlatform(asset.name)
+                            assetList.add(
+                                MultiPlatformReleaseAsset(
+                                    id = asset.id,
+                                    fileName = asset.name,
+                                    platform = platform,
+                                    browserDownloadUrl = asset.browser_download_url,
+                                    apiAssetUrl = asset.url,
+                                    sizeBytes = asset.size,
+                                    releaseName = relTitle,
+                                    tagName = release.tag_name,
+                                    publishedAt = release.published_at ?: release.created_at
+                                )
                             )
-                            break
+                            if (foundDirectApk == null && asset.name.endsWith(".apk", ignoreCase = true)) {
+                                foundDirectApk = DirectApkReleaseInfo(
+                                    releaseName = relTitle,
+                                    tagName = release.tag_name,
+                                    apkAssetName = asset.name,
+                                    apkDownloadUrl = asset.browser_download_url,
+                                    apiAssetUrl = asset.url,
+                                    sizeBytes = asset.size,
+                                    publishedAt = release.published_at ?: release.created_at
+                                )
+                            }
                         }
                     }
+                    _multiPlatformReleaseAssets.value = assetList
                     _latestDirectApk.value = foundDirectApk
                 } catch (e: Exception) {
                     Log.d("RepoBuildViewModel", "Releases fetch notice: ${e.message}")
@@ -530,6 +584,55 @@ class RepoBuildViewModel : ViewModel() {
             } else isoDateStr
         } catch (_: Exception) {
             isoDateStr
+        }
+    }
+
+    fun downloadFileToPublicDownloads(
+        context: Context,
+        downloadUrl: String,
+        apiAssetUrl: String? = null,
+        fileName: String,
+        token: String = ""
+    ) {
+        val authHeader = if (token.isNotBlank()) (if (token.startsWith("Bearer ")) token else "Bearer $token") else null
+        viewModelScope.launch {
+            _statusState.value = BuildStatusState.Downloading("Downloading '$fileName' to device Downloads folder...")
+            try {
+                val targetUrl = if (!apiAssetUrl.isNullOrBlank()) apiAssetUrl else downloadUrl
+                val responseBody = if (!apiAssetUrl.isNullOrBlank()) {
+                    RetrofitClient.githubService.downloadReleaseAsset(
+                        token = authHeader,
+                        accept = "application/octet-stream",
+                        url = targetUrl
+                    )
+                } else {
+                    RetrofitClient.githubService.downloadArtifactZip(authHeader, targetUrl)
+                }
+
+                val savedFile = ApkInstaller.saveToPublicDownloadsFolder(context, responseBody, fileName)
+                val sizeKb = savedFile.length() / 1024
+
+                if (fileName.endsWith(".apk", ignoreCase = true) && ApkInstaller.isValidApk(context, savedFile)) {
+                    ApkInstaller.installApk(context, savedFile)
+                    _statusState.value = BuildStatusState.Success("Saved '$fileName' ($sizeKb KB) to Downloads folder & launched installer!")
+                } else {
+                    _statusState.value = BuildStatusState.Success("Saved '$fileName' ($sizeKb KB) to device Downloads folder!")
+                }
+            } catch (e: Exception) {
+                if (!apiAssetUrl.isNullOrBlank() && downloadUrl != apiAssetUrl) {
+                    try {
+                        val responseBody = RetrofitClient.githubService.downloadArtifactZip(authHeader, downloadUrl)
+                        val savedFile = ApkInstaller.saveToPublicDownloadsFolder(context, responseBody, fileName)
+                        val sizeKb = savedFile.length() / 1024
+                        if (fileName.endsWith(".apk", ignoreCase = true) && ApkInstaller.isValidApk(context, savedFile)) {
+                            ApkInstaller.installApk(context, savedFile)
+                        }
+                        _statusState.value = BuildStatusState.Success("Saved '$fileName' ($sizeKb KB) to device Downloads folder!")
+                        return@launch
+                    } catch (_: Exception) {}
+                }
+                _statusState.value = BuildStatusState.Error("Failed to download '$fileName': ${e.localizedMessage ?: e.message}")
+            }
         }
     }
 

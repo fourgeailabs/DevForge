@@ -1,8 +1,10 @@
 package com.example.utils
 
+import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
 import android.util.Log
 import androidx.core.content.FileProvider
 import okhttp3.ResponseBody
@@ -310,6 +312,71 @@ object ApkInstaller {
             text.startsWith("<") || text.startsWith("{\"") || text.contains("Error")
         } catch (_: Exception) {
             false
+        }
+    }
+
+    /**
+     * Saves any downloaded file (Windows, Mac, Linux, iOS, Android, Zip, etc.) directly into
+     * the device's public Downloads directory and registers it with Android's DownloadManager.
+     */
+    suspend fun saveToPublicDownloadsFolder(
+        context: Context,
+        responseBody: ResponseBody,
+        fileName: String
+    ): File = withContext(Dispatchers.IO) {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        if (!downloadsDir.exists()) {
+            downloadsDir.mkdirs()
+        }
+        val targetFile = File(downloadsDir, fileName)
+        if (targetFile.exists()) {
+            targetFile.delete()
+        }
+
+        responseBody.byteStream().use { inputStream ->
+            FileOutputStream(targetFile).use { outputStream ->
+                val buffer = ByteArray(32768)
+                var bytesRead: Int
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesRead)
+                }
+                outputStream.flush()
+            }
+        }
+
+        try {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
+            downloadManager?.addCompletedDownload(
+                fileName,
+                "Downloaded from GitHub via DevForge Pro",
+                true,
+                getMimeTypeForFile(fileName),
+                targetFile.absolutePath,
+                targetFile.length(),
+                true
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "DownloadManager notification notice: ${e.message}")
+        }
+
+        return@withContext targetFile
+    }
+
+    private fun getMimeTypeForFile(fileName: String): String {
+        val lower = fileName.lowercase()
+        return when {
+            lower.endsWith(".apk") -> "application/vnd.android.package-archive"
+            lower.endsWith(".exe") -> "application/x-msdownload"
+            lower.endsWith(".msi") -> "application/x-msi"
+            lower.endsWith(".dmg") -> "application/x-apple-diskimage"
+            lower.endsWith(".pkg") -> "application/x-newton-compatible-pkg"
+            lower.endsWith(".ipa") -> "application/octet-stream"
+            lower.endsWith(".deb") -> "application/vnd.debian.binary-package"
+            lower.endsWith(".rpm") -> "application/x-rpm"
+            lower.endsWith(".appimage") -> "application/x-executable"
+            lower.endsWith(".zip") -> "application/zip"
+            lower.endsWith(".tar.gz") || lower.endsWith(".tgz") -> "application/gzip"
+            else -> "application/octet-stream"
         }
     }
 }

@@ -498,7 +498,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("App Name: DevForge Pro", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text("Version: 1.16.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Version: 1.17.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(16.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
@@ -617,8 +617,16 @@ fun WhatsNewContent() {
 
     val updates = listOf(
         UpdateItem(
-            version = "1.16.00",
+            version = "1.17.00",
             date = "Current Update",
+            notes = listOf(
+                "Multi-Platform Release Downloads: When searching or viewing any GitHub repository or developer, all downloadable release assets for Windows (.exe, .msi), macOS (.dmg, .pkg), Linux (.AppImage, .deb, .rpm), iOS (.ipa), Android (.apk, .aab), and archives (.zip) are automatically detected.",
+                "Direct Android Downloads Directory Integration: Clicking any downloadable asset streams the file directly into your device's primary public Downloads folder (/sdcard/Download/) and registers it with Android's DownloadManager."
+            )
+        ),
+        UpdateItem(
+            version = "1.16.00",
+            date = "Previous Update",
             notes = listOf(
                 "Developer & Repository Search Options: Added interactive Dev: and Repo: mode selection options to the search bar. Easily toggle search target to look specifically for developers/creators (e.g., 'Dev: fourgeai labs') or repositories by name (e.g., 'Repo: DevForge') on GitHub."
             )
