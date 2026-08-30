@@ -32,8 +32,9 @@ jobs:
           KEYSTORE_PATH: ${{ github.workspace }}/release.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: "upload" # Ensure this matches your keystore alias
         run: |
-          gradle clean assembleRelease bundleRelease --no-daemon
+          gradle clean assembleRelease bundleRelease -Pandroid.injected.signing.store.file=$KEYSTORE_PATH -Pandroid.injected.signing.store.password=$STORE_PASSWORD -Pandroid.injected.signing.key.alias=$KEY_ALIAS -Pandroid.injected.signing.key.password=$KEY_PASSWORD --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
