@@ -507,7 +507,7 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Version: 1.18.00", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Version: 1.19.02", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             OutlinedButton(
                                 onClick = { appUpdateViewModel.checkForUpdates(savedGithubPat, forceUserTrigger = true) },
                                 shape = RoundedCornerShape(10.dp),
@@ -650,8 +650,17 @@ fun WhatsNewContent() {
 
     val updates = listOf(
         UpdateItem(
-            version = "1.19.00",
+            version = "1.19.02",
             date = "Current Update",
+            notes = listOf(
+                "Version Bump: Updated internal version to 1.19.02.",
+                "Build Pipeline Fixes: Corrected GitHub Actions build configuration to consistently produce both Release APKs and Release App Bundles (AABs).",
+                "UI Version Sync: Synchronized the Settings menu version display with the actual build version."
+            )
+        ),
+        UpdateItem(
+            version = "1.19.00",
+            date = "Previous Update",
             notes = listOf(
                 "Unified Update Engine (Releases + Actions Tab): Integrated the GitHub Actions build pipeline with the in-app update engine. The application now scans both official GitHub releases and successfully completed workflow runs on the Actions tab.",
                 "Automatic ZIP Artifact Extract & Install: Downloads completed Actions run artifacts in standard .zip format, extracts the internal signed APK package directly in-app, verifies packages, and prompts installation.",
