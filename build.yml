@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android Bundle
 
 on:
   workflow_dispatch:
@@ -27,15 +27,15 @@ jobs:
           gradle-version: '9.3.1'
           validate-wrappers: false
 
-      - name: Build APK
+      - name: Build Bundle
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/release.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle assembleRelease --no-daemon
+        run: gradle bundleRelease --no-daemon
 
-      - name: Upload APK
+      - name: Upload Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          name: app-release-bundle
+          path: app/build/outputs/bundle/release/*.aab
