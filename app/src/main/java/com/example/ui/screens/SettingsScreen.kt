@@ -43,6 +43,7 @@ fun SettingsScreen(
     val updateState by appUpdateViewModel.updateState.collectAsState()
 
     var showWhatsNewSheet by remember { mutableStateOf(false) }
+    var showPrivacyPolicySheet by remember { mutableStateOf(false) }
     var showPatHelpDialog by remember { mutableStateOf(false) }
     var tokenInput by remember { mutableStateOf("") }
     var tokenVisible by remember { mutableStateOf(false) }
@@ -486,6 +487,63 @@ fun SettingsScreen(
                 }
             }
 
+            // Legal & Security
+            item {
+                Text(
+                    "Legal & Privacy",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPrivacyPolicySheet = true },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                Icons.Default.Security,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(
+                                    "Privacy Policy & Security",
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp
+                                )
+                                Text(
+                                    "Zero tracking, local credential storage & permissions",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = "View Policy",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
             // About Section
             item {
                 Text(
@@ -507,7 +565,7 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Version: 1.19.03", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Version: 1.19.04", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             OutlinedButton(
                                 onClick = { appUpdateViewModel.checkForUpdates(savedGithubPat, forceUserTrigger = true) },
                                 shape = RoundedCornerShape(10.dp),
@@ -575,6 +633,30 @@ fun SettingsScreen(
                                 modifier = Modifier.size(16.dp)
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Legal & Compliance:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable { showPrivacyPolicySheet = true }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.PrivacyTip,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "View Privacy Policy",
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }
@@ -586,6 +668,21 @@ fun SettingsScreen(
                 containerColor = MaterialTheme.colorScheme.surface
             ) {
                 WhatsNewContent()
+            }
+        }
+
+        if (showPrivacyPolicySheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showPrivacyPolicySheet = false },
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
+                PrivacyPolicyContent(
+                    onOpenGitHubPolicy = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/fourgeailabs/DevForge/blob/main/PRIVACY_POLICY.md"))
+                        context.startActivity(intent)
+                    },
+                    onClose = { showPrivacyPolicySheet = false }
+                )
             }
         }
 
@@ -650,8 +747,17 @@ fun WhatsNewContent() {
 
     val updates = listOf(
         UpdateItem(
-            version = "1.19.03",
+            version = "1.19.04",
             date = "Current Update",
+            notes = listOf(
+                "Privacy Policy & Security Engine: Integrated comprehensive in-app Privacy Policy & Security modal detailing local credential encryption, zero analytics tracking, and Android permission usage.",
+                "GitHub Policy Documentation: Added official PRIVACY_POLICY.md to project repository with complete legal, data retention, and security guarantees.",
+                "Version Bump: Updated internal version to 1.19.04 (versionCode 24)."
+            )
+        ),
+        UpdateItem(
+            version = "1.19.03",
+            date = "Previous Update",
             notes = listOf(
                 "Version Bump: Updated internal version to 1.19.03.",
                 "Build Fixes: Finalized GitHub Actions build configuration to resolve permission and signing issues."
@@ -913,3 +1019,245 @@ data class UpdateItem(
     val date: String,
     val notes: List<String>
 )
+
+@Composable
+fun PrivacyPolicyContent(
+    onOpenGitHubPolicy: () -> Unit,
+    onClose: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        // Header
+        item {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Security,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Privacy Policy & Security",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "DevForge Pro • FourgeAI LABS",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Trust Summary Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.VerifiedUser,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Privacy-First Architecture",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "DevForge Pro is built on strict offline-first and client-to-server principles. We run zero tracking services, zero advertising networks, and zero telemetry servers. Your code, personal tokens, and API keys remain strictly under your control.",
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Section 1: Local Credential Storage
+        item {
+            PolicySectionCard(
+                icon = Icons.Default.VpnKey,
+                title = "1. Local Credential Storage (PAT & BYOK)",
+                points = listOf(
+                    "Encrypted Local Preferences: GitHub Personal Access Tokens (PATs) and Cloud AI API keys (Google Gemini, OpenAI ChatGPT, Anthropic Claude, xAI Grok, DeepSeek, Custom Cloud AI) are stored locally in private Android DataStore sandbox storage.",
+                    "No Middleman Servers: Keys are never logged, proxied, or transmitted to FourgeAI LABS or any secondary backend. Requests dispatch directly to official endpoints."
+                )
+            )
+        }
+
+        // Section 2: Direct API & Network Communication
+        item {
+            PolicySectionCard(
+                icon = Icons.Default.CloudSync,
+                title = "2. Direct API & Network Communication",
+                points = listOf(
+                    "Official GitHub Endpoints: All repository queries, commit inspections, workflow triggers, and release asset downloads communicate directly with api.github.com and github.com over TLS/HTTPS.",
+                    "Cloud AI Providers: AI coding assists and build completion predictions send queries directly from your device to your selected provider's official REST API endpoint."
+                )
+            )
+        }
+
+        // Section 3: Android System Permissions
+        item {
+            PolicySectionCard(
+                icon = Icons.Default.AdminPanelSettings,
+                title = "3. Android Permissions & Purpose",
+                points = listOf(
+                    "INTERNET (android.permission.INTERNET): Required to connect with GitHub REST API, stream release APKs, and communicate with user-configured AI APIs.",
+                    "REQUEST_INSTALL_PACKAGES (android.permission.REQUEST_INSTALL_PACKAGES): Required to prompt the Android system installer when you install a compiled APK artifact or in-app update. Installation is always user-initiated and requires explicit confirmation.",
+                    "FileProvider: Safely shares verified .apk archives with Android's PackageInstaller without exposing broad filesystem storage."
+                )
+            )
+        }
+
+        // Section 4: Source Code & Repository Privacy
+        item {
+            PolicySectionCard(
+                icon = Icons.Default.Code,
+                title = "4. Source Code & Repository Privacy",
+                points = listOf(
+                    "Scoped Access: DevForge Pro accesses only the public repositories you view or private repositories explicitly granted by your GitHub PAT token.",
+                    "Sandboxed Edits: Local code edits remain in the application sandbox on your device and are never broadcast externally unless you explicitly trigger a sync or commit."
+                )
+            )
+        }
+
+        // Section 5: Data Retention & Instant Wiping
+        item {
+            PolicySectionCard(
+                icon = Icons.Default.DeleteSweep,
+                title = "5. Data Retention & 1-Tap Wiping",
+                points = listOf(
+                    "Instant Disconnect: Tap 'Disconnect' in Settings to immediately wipe your stored GitHub token.",
+                    "API Key Removal: Clearing the AI API key input field in Settings removes the key from device storage.",
+                    "Complete Deletion: Clearing application storage or uninstalling the app permanently purges all cached projects and preferences from the device."
+                )
+            )
+        }
+
+        // Section 6: Third-Party Developer Platforms
+        item {
+            PolicySectionCard(
+                icon = Icons.Default.OpenInNew,
+                title = "6. Third-Party Developer Platforms",
+                points = listOf(
+                    "GitHub Privacy Statement: Governs your repository data and GitHub account interactions (docs.github.com/en/site-policy/privacy-policies).",
+                    "Google AI Studio / Gemini: Governs API interactions when utilizing Gemini models (policies.google.com/privacy).",
+                    "Other Providers: Standard terms of OpenAI, Anthropic, xAI, and DeepSeek apply to requests sent with your respective BYOK keys."
+                )
+            )
+        }
+
+        // Section 7: Creator & Contact Info
+        item {
+            PolicySectionCard(
+                icon = Icons.Default.Business,
+                title = "7. Creator & Contact Information",
+                points = listOf(
+                    "Created by FourgeAI LABS: Developer of open mobile tooling.",
+                    "GitHub: https://github.com/fourgeailabs",
+                    "Repository: https://github.com/fourgeailabs/DevForge"
+                )
+            )
+        }
+
+        // Action Buttons
+        item {
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onOpenGitHubPolicy,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("View on GitHub", fontSize = 13.sp)
+                }
+
+                Button(
+                    onClick = onClose,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Close")
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+fun PolicySectionCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    points: List<String>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            points.forEach { point ->
+                Row(modifier = Modifier.padding(vertical = 3.dp)) {
+                    Text("• ", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                    Text(
+                        text = point,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}

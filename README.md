@@ -9,7 +9,15 @@ GitHub: [https://github.com/fourgeailabs](https://github.com/fourgeailabs)
 ## App GitHub Repository
 GitHub Repository: [https://github.com/fourgeailabs/DevForge](https://github.com/fourgeailabs/DevForge)
 
+## Privacy Policy & Legal
+Privacy Policy: [PRIVACY_POLICY.md](PRIVACY_POLICY.md)  
+DevForge Pro is an offline-first and privacy-first application. It collects zero telemetry, runs zero third-party tracking scripts, and stores all GitHub Personal Access Tokens and Cloud AI API keys strictly on your local Android device.
+
 ## Recent Updates
+
+### Version 1.19.04
+- **Comprehensive Privacy Policy & Security Architecture**: Added a dedicated in-app Privacy Policy modal and repository `PRIVACY_POLICY.md` file covering local DataStore encryption for BYOK & GitHub tokens, direct client-to-server TLS communications, zero tracking guarantees, and Android system permissions (`INTERNET`, `REQUEST_INSTALL_PACKAGES`, `FileProvider`).
+- **Version Bump**: Updated application version to `1.19.04` (versionCode `24`).
 
 ### Version 1.19.00
 - **Unified Actions + Releases Update Engine**: Expanded the in-app self-update engine to look for completed builds on the GitHub Actions tab in addition to official Release tags. This enables immediate developer testing of successful workflow-compiled binaries.
